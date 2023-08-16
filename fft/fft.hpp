@@ -31,30 +31,44 @@
 #include <utility>
 #include <vector>
 
-using integer = unsigned long long;
-using real = double;
-
 #define XDIM 0
 #define YDIM 1
 #define ZDIM 2
 #define NDIM 3
 
 class fft_server: public hpx::components::managed_component_base<fft_server> {
-	const integer N;
-	std::array<integer, NDIM> M;
-	std::array<integer, NDIM> L;
+	const int Nglobal;
+	int Nrank;
+	int Nlocal;
+	std::array<int, NDIM> lb;
+	std::array<int, NDIM> ub;
 	std::array<std::vector<hpx::id_type>, NDIM> servers;
-	std::vector<std::complex<real>> X;
+	std::vector<double> X;
+	std::vector<double> Y;
+	int index(int, int, int) const;
 public:
-	fft_server(integer N);
-	void set_servers(std::array<std::vector<hpx::id_type>, NDIM>&&);
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, set_servers);
+	fft_server(int N, const std::array<int, NDIM>& pos);
+	void set_servers(std::array<std::vector<hpx::id_type>, NDIM>&&); //
+	void write(std::vector<std::complex<double>>&&, const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
+	std::vector<std::complex<double>> read(const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
+	void transpose_xy();
+	void transpose_xz();HPX_DEFINE_COMPONENT_ACTION(fft_server, read);HPX_DEFINE_COMPONENT_ACTION(fft_server, set_servers); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, write);HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_xy);HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_xz);
+	//
 };
 
 class fft {
-	const integer N;
-	std::vector<std::vector<std::vector<hpx::id_type>>> servers;
-	fft(integer, std::vector<hpx::id_type>&& );
+	const int Nglobal;
+	int Nrank;
+	int Nlocal;
+	std::vector<std::vector<std::vector<hpx::id_type>>>servers;
+	fft(int, std::vector<hpx::id_type>&& );
+	void write(std::vector<std::complex<double>>&&, const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
+	std::vector<std::complex<double>> read(const std::array<int, NDIM>&, const std::array<int, NDIM>&);//
 };
+
+extern "C" {
+void transpose_xz_asm(double* X, size_t N);
+}
 
 #endif /* FFT_HPP_ */

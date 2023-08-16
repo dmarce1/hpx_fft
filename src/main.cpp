@@ -1,7 +1,7 @@
 #include <fft/fft.hpp>
 #include <fft/timer.hpp>
 
-double fftw_3d(std::complex<real>* x, int N) {
+double fftw_3d(std::complex<double>* x, int N) {
 	static std::unordered_map<int, fftw_plan> plans;
 	static std::unordered_map<int, fftw_complex*> in;
 	static std::unordered_map<int, fftw_complex*> out;

@@ -15,6 +15,7 @@ set(fft_source_files
     src/fft.cpp
     src/fft_server.cpp
     src/main.cpp
+    src/transpose.S
 )      
 
 set(fft_include_files
