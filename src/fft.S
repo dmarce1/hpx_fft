@@ -80,7 +80,7 @@ radix2_k2:    mov            k2, %rax
               mov            k2, %rdi
               shl            $3, %rdi
               lea            (X, %rdi, 8), %rax
-              lea            (X, N28, 8), %rbx
+              lea            (%rax, N28, 8), %rbx
               vmovapd        (%rax), er0
               vmovapd        32(%rax), ei0
               vmovapd        (%rbx), er1

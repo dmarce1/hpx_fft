@@ -118,7 +118,7 @@ void operator delete[](void *p) {
 
 int hpx_main(int argc, char *argv[]) {
 	fftw_init_threads();
-	test_fft(4 * 1024);
+	test_fft(2 * 1024);
 	return hpx::finalize();
 }
 
