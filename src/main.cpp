@@ -78,9 +78,9 @@ void test_fft(int N) {
 		U[i] = V[i] = std::complex<double>(i, i);
 	}
 	fft.write(std::move(U), { 0, 0, 0 }, { N, N, N });
-	fft.transpose_zyx();
+	fft.transpose_yxz();
 	fft.scramble_x();
-	fft.transpose_zyx();
+	fft.transpose_yxz();
 	U = fft.read( { 0, 0, 0 }, { N, N, N });
 	for (int i = 0; i < N3; i++) {
 		printf("%4i %15e %15e\n", i, U[i].real(), U[i].imag());
