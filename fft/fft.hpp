@@ -47,7 +47,6 @@ public:
 	void apply_fft(integer M) const;
 	std::vector<real> read(integer xib, integer xie);
 	void transpose(std::vector<tint> P);
-	void scramble();
 	void write(std::vector<real>&& Z, integer xib, integer xie);
 };
 
@@ -76,8 +75,8 @@ public:
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, init); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, read); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, write); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, set_channel); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose); //
+	HPX_DEFINE_COMPONENT_DIRECT_ACTION(fft_server, set_channel); //
 	//
 
 };

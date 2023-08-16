@@ -48,7 +48,7 @@ void fft_server::set_channel(std::vector<real>&& Z, integer orank) {
 void fft_server::transpose(std::vector<tint> pindices) {
 	permuted_index p(pindices);
 	permuted_index pinv(invert(pindices));
-	std::unordered_map<integer, std::vector<real>> sends;
+	std::vector<std::vector<real>> sends(nrank);
 	std::vector<hpx::future<void>> futs;
 	std::vector<bool> has(nrank, false);
 	for (p.set_natural(begin); p.get_natural() < end; ++p) {
@@ -57,8 +57,10 @@ void fft_server::transpose(std::vector<tint> pindices) {
 		const integer orank = j * nrank / N;
 		sends[orank].push_back(X[i - begin]);
 	}
-	for (auto si = sends.begin(); si != sends.end(); si++) {
-		hpx::post<typename fft_server::set_channel_action>(servers[si->first], std::move(si->second), rank);
+	for( integer n = 0; n < nrank; n++) {
+		if( sends[n].size()) {
+			hpx::post<typename fft_server::set_channel_action>(servers[n], std::move(sends[n]), rank);
+		}
 	}
 	for (pinv.set_natural(begin); pinv.get_natural() < end; ++pinv) {
 		const integer j = pinv.get_permuted();

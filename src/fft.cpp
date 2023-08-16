@@ -40,18 +40,18 @@ void fft::fft_2d() {
 	P1.resize(log2N);
 	P2.resize(log2N);
 	for (integer i = 0; i < log2S; i++) {
-		P0[i] = i + 1;
-		P1[i] = i + log2M + 1;
+		P1[i] = i + 1;
+		P0[i] = i + log2M + 1;
 	}
 	P0[log2S] = 0;
 	P1[log2S] = 0;
 	for (integer i = log2S + 1; i < log2S + 1 + log2M; i++) {
-		P0[i] = log2N - i + log2S;
-		P1[i] = 1 + log2M - i + log2S;
+		P1[i] = log2N - i + log2S;
+		P0[i] = 1 + log2M - i + log2S;
 	}
 	for (integer i = log2S + 1 + log2M; i < log2N; i++) {
-		P0[i] = i - log2M;
-		P1[i] = i;
+		P1[i] = i - log2M;
+		P0[i] = i;
 	}
 	P2[0] = 0;
 	for (int i = 1; i < log2M + 1; i++) {
@@ -60,13 +60,13 @@ void fft::fft_2d() {
 	}
 	P2 = relto(P2, P1);
 	P1 = relto(P1, P0);
-	/*for (int i = 0; i < P0.size(); i++) {
-		printf("%2i %2i %2i %2i\n", i, P0[i], P1[i], P2[i]);
-	}
-	printf("!\n");
 	for (int i = 0; i < P0.size(); i++) {
-		printf("%2i %2i %2i %2i\n", i, P0[i], P0[P1[i]], P0[P1[P2[i]]]);
-	}*/
+	//	printf("%2i %2i %2i %2i\n", i, P0[i], P1[i], P2[i]);
+	}
+//	printf("!\n");
+	for (int i = 0; i < P0.size(); i++) {
+	//	printf("%2i %2i %2i %2i\n", i, P0[i], P0[P1[i]], P0[P1[P2[i]]]);
+	}
 	transpose(P0);
 	apply_fft(M);
 	transpose(P1);
@@ -103,15 +103,6 @@ void fft::transpose(std::vector<tint> P) {
 		futs[i] = hpx::async<typename fft_server::transpose_action>(servers[i], P);
 	}
 	hpx::wait_all(futs.begin(), futs.end());
-}
-
-void fft::scramble() {
-	tint log2N = std::ilogb(N);
-	std::vector<tint> P(log2N);
-	for (int n = 0; n < log2N; n++) {
-		P[n] = log2N - n - 1;
-	}
-	transpose(P);
 }
 
 void fft::write(std::vector<real>&& Z, integer xib, integer xie) {

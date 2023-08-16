@@ -62,27 +62,32 @@ double rand1() {
 
 void test_fft(integer M) {
 	const integer N = 2 * M * M;
-	integer nthreads = std::min((integer) (1 << (std::ilogb(hpx::threads::hardware_concurrency() - 1) + 2)), M / SIMD_SIZE);
+	integer nthreads = std::min((integer) (1 << (std::ilogb(hpx::threads::hardware_concurrency() - 1) + 1)), M / SIMD_SIZE);
 	fft fft(N, std::vector < hpx::id_type > (nthreads, hpx::find_here()));
-	std::vector<real> U(N), V(N);
-	for (int i = 0; i < N; i++) {
-		U[i] = rand1();
-		V[i] = U[i];
+	for (int n = 0; n < 2; n++) {
+		std::vector<real> U(N), V(N);
+		for (int i = 0; i < N; i++) {
+			U[i] = rand1();
+			V[i] = U[i];
+		}
+		U[0] = V[0] = 1.0;
+		fft.write(std::move(U), 0, N);
+		timer tm;
+		tm.start();
+		fft.fft_2d();
+		tm.stop();
+		U = fft.read(0, N);
+		const double tm0 = fftw_2d((std::complex<double>*) V.data(), M);
+		//double tm0 = 0.0;
+		double err = 0.0;
+		for (int i = 0; i < N; i++) {
+			err += std::abs(U[i] - V[i]);
+		}
+		err /= N;
+		if (n == 1) {
+			printf("%2i %2i %14e %14e %14e\n", M, nthreads, err, tm.read(), tm0);
+		}
 	}
-	U[0] = V[0] = 1.0;
-	fft.write(std::move(U), 0, N);
-	timer tm;
-	tm.start();
-	fft.fft_2d();
-	tm.stop();
-	U = fft.read(0, N);
-	const double tm0 = fftw_2d((std::complex<double>*) V.data(), M);
-	double err = 0.0;
-	for (int i = 0; i < N; i++) {
-		err += std::abs(U[i] - V[i]);
-	}
-	err /= N;
-	printf("%2i %2i %14e %14e %14e\n", M, nthreads, err, tm.read(), tm0);
 
 }
 
@@ -118,7 +123,7 @@ void operator delete[](void *p) {
 
 int hpx_main(int argc, char *argv[]) {
 	fftw_init_threads();
-	for (integer N = 4; N <= 8 * 1024; N *= 2) {
+	for (integer N = 4; N <= 4 * 1024; N *= 2) {
 		test_fft(N);
 	}
 	return hpx::finalize();
