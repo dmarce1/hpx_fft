@@ -8,12 +8,12 @@
 #define       N              %r15
 #define       M0             $4
 
-              .global        transpose_xz_asm
+              .global        transpose_zyx_asm
 
 
               .text
 
-transpose_xz_asm:
+transpose_zyx_asm:
               push           %r12
               push           %r13
               push           %r14
@@ -25,11 +25,14 @@ transpose_xz_asm:
               imul           %rax, %rax
               imul           $2, %rax, %rbx
               imul           $3, %rax, %rcx
-              xor            Ix, Ix
-              xor            Iy, Iy
-              xor            Iz, Iz
               mov            N, M
+              xor            Iy, Iy
+y_loop:       xor            Ix, Ix
+              xor            Iz, Iz
               call           next_level
+              inc            Iy
+              cmp            Iy, N
+              jne            y_loop
               pop            %rbx
               pop            %r15
               pop            %r14
@@ -112,26 +115,14 @@ on_diagonal:  mov            Ix, %rsi
               jmp            done
 next_levels:  shr            M
               call           next_level
-              add            M, Iy
-              call           next_level
-              sub            M, Iy
-              add            M, Ix
-              call           next_level
-              add            M, Iy
-              call           next_level
-              sub            M, Iy
-              sub            M, Ix
               add            M, Iz
               call           next_level
-              add            M, Iy
-              call           next_level
-              sub            M, Iy
+              sub            M, Iz
               add            M, Ix
               call           next_level
-              add            M, Iy
+              add            M, Iz
               call           next_level
               sub            M, Iz
-              sub            M, Iy
               sub            M, Ix
               shl            M
 done:         ret

@@ -1,6 +1,8 @@
 #include <fft/fft.hpp>
 #include <fft/timer.hpp>
 
+#include <mp-units/systems/cgs/cgs.h>
+
 double fftw_3d(std::complex<double>* x, int N) {
 	static std::unordered_map<int, fftw_plan> plans;
 	static std::unordered_map<int, fftw_complex*> in;
@@ -28,11 +30,9 @@ double fftw_3d(std::complex<double>* x, int N) {
 	return tm.read();
 }
 
-
 double rand1() {
 	return (rand() + 0.5) / RAND_MAX;
 }
-
 
 inline int round_up(int i, int r) {
 	return r * ((i - 1) / r + 1);
@@ -64,12 +64,37 @@ void operator delete[](void *p) {
 	free(p);
 }
 
+void test_fft(int N) {
+	const size_t N3 = N * N * N;
+	std::vector<std::complex<double>> U(N3);
+	std::vector<std::complex<double>> V(N3);
+	const int sqrtN = 1 << (std::ilogb(N) >> 1);
+	int nthreads = 1 << (NDIM * (std::ilogb(hpx::threads::hardware_concurrency() - 1) / NDIM + 1));
+	while (nthreads > sqrtN) {
+		nthreads >>= NDIM;
+	}
+	fft3d fft(N, std::vector < hpx::id_type > (nthreads, hpx::find_here()));
+	for (int i = 0; i < N3; i++) {
+		U[i] = V[i] = std::complex<double>(i, i);
+	}
+	fft.write(std::move(U), { 0, 0, 0 }, { N, N, N });
+	fft.transpose_zyx();
+	fft.scramble_x();
+	fft.transpose_zyx();
+	U = fft.read( { 0, 0, 0 }, { N, N, N });
+	for (int i = 0; i < N3; i++) {
+		printf("%4i %15e %15e\n", i, U[i].real(), U[i].imag());
+	}
+}
+
 int hpx_main(int argc, char *argv[]) {
 	fftw_init_threads();
+	test_fft(16);
 	return hpx::finalize();
 }
 
 int main(int argc, char *argv[]) {
+	auto i = mp_units::cgs::unit_symbols::cm;
 	hpx::init(argc, argv);
 }
 

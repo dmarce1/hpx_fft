@@ -1,58 +1,58 @@
 #include <fft/fft.hpp>
 
-fft::fft(int N_, std::vector<hpx::id_type>&& localities) :
+fft3d::fft3d(int N_, std::vector<hpx::id_type>&& localities) :
 		Nglobal(N_) {
 	std::vector < std::vector<std::vector<hpx::future<hpx::id_type>>> >cfuts;
 	std::vector<hpx::future<void>> ifuts;
-	const int nrank = 1 << NDIM * (std::ilogb(localities.size()) / NDIM);
-	Nlocal = std::lround(std::pow(nrank, 1.0 / 3.0));
-	Nrank = Nglobal / Nlocal;
-	cfuts.resize(Nlocal);
+	Nrank = 1 << (std::ilogb(localities.size()) / NDIM);
+	Nlocal = Nglobal / Nrank;
+	cfuts.resize(Nrank);
 	int lll = 0;
 	std::array<int, NDIM> pos;
-	for (pos[XDIM] = 0; pos[XDIM] < Nlocal; pos[XDIM]++) {
-		cfuts[pos[XDIM]].resize(Nlocal);
-		for (pos[YDIM] = 0; pos[YDIM] < Nlocal; pos[YDIM]++) {
-			cfuts[pos[XDIM]][pos[YDIM]].resize(Nlocal);
-			for (pos[ZDIM] = 0; pos[ZDIM] < Nlocal; pos[ZDIM]++) {
+	for (pos[XDIM] = 0; pos[XDIM] < Nrank; pos[XDIM]++) {
+		cfuts[pos[XDIM]].resize(Nrank);
+		for (pos[YDIM] = 0; pos[YDIM] < Nrank; pos[YDIM]++) {
+			cfuts[pos[XDIM]][pos[YDIM]].resize(Nrank);
+			for (pos[ZDIM] = 0; pos[ZDIM] < Nrank; pos[ZDIM]++) {
 				cfuts[pos[XDIM]][pos[YDIM]][pos[ZDIM]] = hpx::new_ < fft_server > (localities[lll], Nglobal, pos);
 				lll++;
 			}
 		}
 	}
-	servers.resize(Nlocal);
-	for (int i = 0; i < Nlocal; i++) {
-		servers[i].resize(Nlocal);
-		for (int j = 0; j < Nlocal; j++) {
-			servers[i][j].resize(Nlocal);
-			for (int k = 0; k < Nlocal; k++) {
+	servers.resize(Nrank);
+	for (int i = 0; i < Nrank; i++) {
+		servers[i].resize(Nrank);
+		for (int j = 0; j < Nrank; j++) {
+			servers[i][j].resize(Nrank);
+			for (int k = 0; k < Nrank; k++) {
 				servers[i][j][k] = cfuts[i][j][k].get();
 			}
 		}
 	}
-	for (int i = 0; i < Nlocal; i++) {
-		for (int j = 0; j < Nlocal; j++) {
-			for (int k = 0; k < Nlocal; k++) {
+	for (int i = 0; i < Nrank; i++) {
+		for (int j = 0; j < Nrank; j++) {
+			for (int k = 0; k < Nrank; k++) {
 				std::array<std::vector<hpx::id_type>, NDIM> svrs;
 				for (int dim = 0; dim < NDIM; dim++) {
-					svrs[dim].resize(Nlocal);
+					svrs[dim].resize(Nrank);
 				}
-				for (int m = 0; m < Nlocal; m++) {
+				for (int m = 0; m < Nrank; m++) {
 					svrs[XDIM][m] = servers[m][j][k];
 				}
-				for (int m = 0; m < Nlocal; m++) {
+				for (int m = 0; m < Nrank; m++) {
 					svrs[YDIM][m] = servers[i][m][k];
 				}
-				for (int m = 0; m < Nlocal; m++) {
+				for (int m = 0; m < Nrank; m++) {
 					svrs[ZDIM][m] = servers[i][j][m];
 				}
 				ifuts.push_back(hpx::async<typename fft_server::set_servers_action>(servers[i][j][k], std::move(svrs)));
 			}
 		}
 	}
+	hpx::wait_all(ifuts.begin(), ifuts.end());
 }
 
-std::vector<std::complex<double>> fft::read(const std::array<int, NDIM>& xlb, const std::array<int, NDIM>& xub) {
+std::vector<std::complex<double>> fft3d::read(std::array<int, NDIM> xlb, std::array<int, NDIM> xub) {
 	std::array<int, NDIM> dx2;
 	std::array<int, NDIM> dx1;
 	int sz = 1;
@@ -65,19 +65,19 @@ std::vector<std::complex<double>> fft::read(const std::array<int, NDIM>& xlb, co
 	std::array<int, NDIM> ylb, yub;
 	std::vector < hpx::future<std::vector<std::complex<double>>> >futs1;
 	std::vector < hpx::future<void> > futs2;
-	for (int i = 0; i < Nlocal; i++) {
-		zlb[XDIM] = i * Nrank;
-		zub[XDIM] = zlb[XDIM] + Nrank;
-		for (int j = 0; j < Nlocal; j++) {
-			zlb[YDIM] = j * Nrank;
-			zub[YDIM] = zlb[YDIM] + Nrank;
-			for (int k = 0; k < Nlocal; k++) {
-				zlb[ZDIM] = k * Nrank;
-				zub[ZDIM] = zlb[ZDIM] + Nrank;
+	for (int i = 0; i < Nrank; i++) {
+		zlb[XDIM] = i * Nlocal;
+		zub[XDIM] = zlb[XDIM] + Nlocal;
+		for (int j = 0; j < Nrank; j++) {
+			zlb[YDIM] = j * Nlocal;
+			zub[YDIM] = zlb[YDIM] + Nlocal;
+			for (int k = 0; k < Nrank; k++) {
+				zlb[ZDIM] = k * Nlocal;
+				zub[ZDIM] = zlb[ZDIM] + Nlocal;
 				int vol = 1;
 				for (int dim = 0; dim < NDIM; dim++) {
 					ylb[dim] = std::max(xlb[dim], zlb[dim]);
-					yub[dim] = std::min(yub[dim], yub[dim]);
+					yub[dim] = std::min(xub[dim], zub[dim]);
 					vol *= yub[dim] - ylb[dim];
 				}
 				if (vol) {
@@ -87,19 +87,19 @@ std::vector<std::complex<double>> fft::read(const std::array<int, NDIM>& xlb, co
 		}
 	}
 	int lll = 0;
-	for (int i = 0; i < Nlocal; i++) {
-		zlb[XDIM] = i * Nrank;
-		zub[XDIM] = zlb[XDIM] + Nrank;
-		for (int j = 0; j < Nlocal; j++) {
-			zlb[YDIM] = j * Nrank;
-			zub[YDIM] = zlb[YDIM] + Nrank;
-			for (int k = 0; k < Nlocal; k++) {
-				zlb[ZDIM] = k * Nrank;
-				zub[ZDIM] = zlb[ZDIM] + Nrank;
+	for (int i = 0; i < Nrank; i++) {
+		zlb[XDIM] = i * Nlocal;
+		zub[XDIM] = zlb[XDIM] + Nlocal;
+		for (int j = 0; j < Nrank; j++) {
+			zlb[YDIM] = j * Nlocal;
+			zub[YDIM] = zlb[YDIM] + Nlocal;
+			for (int k = 0; k < Nrank; k++) {
+				zlb[ZDIM] = k * Nlocal;
+				zub[ZDIM] = zlb[ZDIM] + Nlocal;
 				int vol = 1;
 				for (int dim = 0; dim < NDIM; dim++) {
 					ylb[dim] = std::max(xlb[dim], zlb[dim]);
-					yub[dim] = std::min(yub[dim], yub[dim]);
+					yub[dim] = std::min(xub[dim], zub[dim]);
 					dx2[dim] = yub[dim] - ylb[dim];
 					vol *= dx2[dim];
 				}
@@ -124,7 +124,7 @@ std::vector<std::complex<double>> fft::read(const std::array<int, NDIM>& xlb, co
 	return std::move(Z);
 }
 
-void fft::write(std::vector<std::complex<double>>&& Z, const std::array<int, NDIM>& xlb, const std::array<int, NDIM>& xub) {
+void fft3d::write(std::vector<std::complex<double>>&& Z, std::array<int, NDIM> xlb, std::array<int, NDIM> xub) {
 	std::array<int, NDIM> dx2;
 	std::array<int, NDIM> dx1;
 	int sz = 1;
@@ -135,19 +135,19 @@ void fft::write(std::vector<std::complex<double>>&& Z, const std::array<int, NDI
 	std::array<int, NDIM> zlb, zub;
 	std::array<int, NDIM> ylb, yub;
 	std::vector < hpx::future<void> > futs;
-	for (int i = 0; i < Nlocal; i++) {
-		zlb[XDIM] = i * Nrank;
-		zub[XDIM] = zlb[XDIM] + Nrank;
-		for (int j = 0; j < Nlocal; j++) {
-			zlb[YDIM] = j * Nrank;
-			zub[YDIM] = zlb[YDIM] + Nrank;
-			for (int k = 0; k < Nlocal; k++) {
-				zlb[ZDIM] = k * Nrank;
-				zub[ZDIM] = zlb[ZDIM] + Nrank;
+	for (int i = 0; i < Nrank; i++) {
+		zlb[XDIM] = i * Nlocal;
+		zub[XDIM] = zlb[XDIM] + Nlocal;
+		for (int j = 0; j < Nrank; j++) {
+			zlb[YDIM] = j * Nlocal;
+			zub[YDIM] = zlb[YDIM] + Nlocal;
+			for (int k = 0; k < Nrank; k++) {
+				zlb[ZDIM] = k * Nlocal;
+				zub[ZDIM] = zlb[ZDIM] + Nlocal;
 				int vol = 1;
 				for (int dim = 0; dim < NDIM; dim++) {
 					ylb[dim] = std::max(xlb[dim], zlb[dim]);
-					yub[dim] = std::min(yub[dim], yub[dim]);
+					yub[dim] = std::min(xub[dim], zub[dim]);
 					dx2[dim] = yub[dim] - ylb[dim];
 					vol *= dx2[dim];
 				}
@@ -170,3 +170,50 @@ void fft::write(std::vector<std::complex<double>>&& Z, const std::array<int, NDI
 	hpx::wait_all(futs.begin(), futs.end());
 }
 
+void fft3d::scramble_x() {
+	std::vector<hpx::future<void>> futs;
+	for (int i = 0; i < Nrank; i++) {
+		for (int j = 0; j < Nrank; j++) {
+			for (int k = 0; k < Nrank; k++) {
+				futs.push_back(hpx::async<typename fft_server::scramble_x_action>(servers[i][j][k]));
+			}
+		}
+	}
+	hpx::wait_all(futs.begin(), futs.end());
+}
+
+void fft3d::transpose_x() {
+	std::vector<hpx::future<void>> futs;
+	for (int i = 0; i < Nrank; i++) {
+		for (int j = 0; j < Nrank; j++) {
+			for (int k = 0; k < Nrank; k++) {
+				futs.push_back(hpx::async<typename fft_server::transpose_x_action>(servers[i][j][k]));
+			}
+		}
+	}
+	hpx::wait_all(futs.begin(), futs.end());
+}
+
+void fft3d::transpose_yxz() {
+	std::vector<hpx::future<void>> futs;
+	for (int i = 0; i < Nrank; i++) {
+		for (int j = 0; j < Nrank; j++) {
+			for (int k = 0; k < Nrank; k++) {
+				futs.push_back(hpx::async<typename fft_server::transpose_yxz_action>(servers[i][j][k]));
+			}
+		}
+	}
+	hpx::wait_all(futs.begin(), futs.end());
+}
+
+void fft3d::transpose_zyx() {
+	std::vector<hpx::future<void>> futs;
+	for (int i = 0; i < Nrank; i++) {
+		for (int j = 0; j < Nrank; j++) {
+			for (int k = 0; k < Nrank; k++) {
+				futs.push_back(hpx::async<typename fft_server::transpose_zyx_action>(servers[i][j][k]));
+			}
+		}
+	}
+	hpx::wait_all(futs.begin(), futs.end());
+}

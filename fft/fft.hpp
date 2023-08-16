@@ -51,24 +51,41 @@ public:
 	void set_servers(std::array<std::vector<hpx::id_type>, NDIM>&&); //
 	void write(std::vector<std::complex<double>>&&, const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
 	std::vector<std::complex<double>> read(const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
-	void transpose_xy();
-	void transpose_xz();HPX_DEFINE_COMPONENT_ACTION(fft_server, read);HPX_DEFINE_COMPONENT_ACTION(fft_server, set_servers); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, write);HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_xy);HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_xz);
+	std::pair<std::vector<double>, std::vector<double>> exchange_x(std::vector<double>&&, std::vector<double>&&, int xi);
+	void transform_x(const std::function<int(int)>&);
+	void scramble_x();
+	void transpose_x();
+	void transpose_yxz();
+	void transpose_zyx(); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, exchange_x); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_x); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, scramble_x); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, read); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, set_servers); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, write); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_yxz); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_zyx);
 	//
 };
 
-class fft {
+class fft3d {
 	const int Nglobal;
 	int Nrank;
 	int Nlocal;
 	std::vector<std::vector<std::vector<hpx::id_type>>>servers;
-	fft(int, std::vector<hpx::id_type>&& );
-	void write(std::vector<std::complex<double>>&&, const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
-	std::vector<std::complex<double>> read(const std::array<int, NDIM>&, const std::array<int, NDIM>&);//
+public:
+	fft3d(int, std::vector<hpx::id_type>&& );
+	void scramble_x();
+	void transpose_x();
+	void transpose_yxz();
+	void transpose_zyx(); //
+	void write(std::vector<std::complex<double>>&&, std::array<int, NDIM>, std::array<int, NDIM>);//
+	std::vector<std::complex<double>> read(std::array<int, NDIM>, std::array<int, NDIM>);//
 };
 
 extern "C" {
-void transpose_xz_asm(double* X, size_t N);
+void transpose_zyx_asm(double* X, size_t N);
+size_t bit_reverse(size_t, size_t);
 }
 
 #endif /* FFT_HPP_ */

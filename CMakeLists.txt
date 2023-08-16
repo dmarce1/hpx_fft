@@ -5,16 +5,12 @@ cmake_policy(SET CMP0074 NEW)
 project(fft CXX C ASM)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -fno-pie -g -no-pie -Wno-attributes --fast-math")
 find_package(HPX REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
-enable_language(CUDA)
-set(CUDA_PROPAGATE_HOST_FLAGS FALSE)
-execute_process(COMMAND nvcc -lcuda ${PROJECT_SOURCE_DIR}/src/cuda_detect.cu -o cuda_detect)
-execute_process(COMMAND ./cuda_detect OUTPUT_VARIABLE CUDA_ARCH)
-message(STATUS "CUDA Architecture: ${CUDA_ARCH}")
 
 set(fft_source_files
     src/fft.cpp
     src/fft_server.cpp
     src/main.cpp
+    src/bit_reverse.S
     src/transpose.S
 )      
 
