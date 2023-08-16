@@ -19,6 +19,7 @@
 #include <hpx/mutex.hpp>
 #include <simd.hpp>
 
+#include <array>
 #include <chrono>
 #include <cassert>
 #include <cmath>
@@ -30,64 +31,30 @@
 #include <utility>
 #include <vector>
 
-using integer = long long;
-using tint = signed char;
+using integer = unsigned long long;
 using real = double;
 
-class fft {
-	std::vector<hpx::id_type> servers;
-	integer N;
-	integer nrank;
-	integer Nperrank;
-
-public:
-
-	fft(integer N_, std::vector<hpx::id_type> localities);
-	void fft_2d();
-	void apply_fft(integer M1, integer M0, integer L) const;
-	std::vector<real> read(integer xib, integer xie);
-	void transpose(std::vector<tint> P);
-	void write(std::vector<real>&& Z, integer xib, integer xie);
-};
+#define XDIM 0
+#define YDIM 1
+#define ZDIM 2
+#define NDIM 3
 
 class fft_server: public hpx::components::managed_component_base<fft_server> {
-
-	std::vector<hpx::id_type> servers;
-	std::vector<real> X;
-	std::vector<hpx::channel<std::vector<real>>>channels;
-	integer N;
-	integer begin;
-	integer end;
-	integer rank;
-	integer nrank;
-
+	const integer N;
+	std::array<integer, NDIM> M;
+	std::array<integer, NDIM> L;
+	std::array<std::vector<hpx::id_type>, NDIM> servers;
+	std::vector<std::complex<real>> X;
 public:
-
-	fft_server();
-	void apply_fft(integer M1, integer M0, integer L);
-	void init(std::vector<hpx::id_type> servers_, integer rank_, integer N_);
-	std::vector<real> read(integer xib, integer xie);
-	void write(std::vector<real>&& Z, integer xib, integer xie);
-	void set_channel(std::vector<real>&& Z, integer orank);
-	void transpose(std::vector<tint> pindices);
-	//
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_fft);//
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, init);//
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, read);//
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, write);//
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose);//
-	HPX_DEFINE_COMPONENT_DIRECT_ACTION(fft_server, set_channel);//
-	//
-
+	fft_server(integer N);
+	void set_servers(std::array<std::vector<hpx::id_type>, NDIM>&&);
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, set_servers);
 };
 
-extern "C" {
-void transpose_re(double*, integer);
-void scramble_hi(double*, integer, integer);
-void fft_1d(double*, const double*, const double*, integer, integer, integer);
-}
-
-const std::vector<real>& cos_twiddles(int N);
-const std::vector<real>& sin_twiddles(int N);
+class fft {
+	const integer N;
+	std::vector<std::vector<std::vector<hpx::id_type>>> servers;
+	fft(integer, std::vector<hpx::id_type>&& );
+};
 
 #endif /* FFT_HPP_ */
