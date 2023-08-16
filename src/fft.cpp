@@ -60,7 +60,7 @@ void fft::fft_2d() {
 	}
 	P2 = relto(P2, P1);
 	P1 = relto(P1, P0);
-/*	for (int i = 0; i < P0.size(); i++) {
+	/*for (int i = 0; i < P0.size(); i++) {
 		printf("%2i %2i %2i %2i\n", i, P0[i], P1[i], P2[i]);
 	}
 	printf("!\n");

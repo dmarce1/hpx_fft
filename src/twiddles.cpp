@@ -1,7 +1,9 @@
 #include <fft/fft.hpp>
 
 const std::vector<real>& cos_twiddles(int N) {
-	static thread_local std::unordered_map<integer, std::shared_ptr<std::vector<real>>>values;
+	static hpx::mutex mtx;
+	std::lock_guard < hpx::mutex > lock(mtx);
+	static std::unordered_map<integer, std::shared_ptr<std::vector<real>>>values;
 	auto i = values.find(N);
 	if (i == values.end()) {
 		std::vector<real> W(N);
@@ -15,7 +17,9 @@ const std::vector<real>& cos_twiddles(int N) {
 }
 
 const std::vector<real>& sin_twiddles(int N) {
-	static thread_local std::unordered_map<integer, std::shared_ptr<std::vector<real>>>values;
+	static hpx::mutex mtx;
+	std::lock_guard < hpx::mutex > lock(mtx);
+	static std::unordered_map<integer, std::shared_ptr<std::vector<real>>>values;
 	auto i = values.find(N);
 	if (i == values.end()) {
 		std::vector<real> W(N);

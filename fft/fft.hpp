@@ -65,12 +65,12 @@ class fft_server: public hpx::components::managed_component_base<fft_server> {
 public:
 
 	fft_server();
-	hpx::future<void> apply_fft(integer M);
+	void apply_fft(integer M);
 	void init(std::vector<hpx::id_type> servers_, integer rank_, integer N_);
 	std::vector<real> read(integer xib, integer xie);
 	void write(std::vector<real>&& Z, integer xib, integer xie);
 	void set_channel(std::vector<real>&& Z, integer orank);
-	hpx::future<void> transpose(std::vector<tint> pindices);
+	void transpose(std::vector<tint> pindices);
 	//
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_fft); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, init); //
