@@ -100,11 +100,7 @@ void fft::transpose(std::vector<tint> P) {
 	P = invert(P);
 	std::vector<hpx::future<void>> futs(servers.size());
 	for (integer i = 0; i < servers.size(); i++) {
-		futs[i] = hpx::async<typename fft_server::transpose_begin_action>(servers[i], P);
-	}
-	hpx::wait_all(futs.begin(), futs.end());
-	for (integer i = 0; i < servers.size(); i++) {
-		futs[i] = hpx::async<typename fft_server::transpose_end_action>(servers[i], P);
+		futs[i] = hpx::async<typename fft_server::transpose_action>(servers[i], P);
 	}
 	hpx::wait_all(futs.begin(), futs.end());
 }
