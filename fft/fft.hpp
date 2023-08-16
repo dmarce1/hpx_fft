@@ -44,7 +44,7 @@ public:
 
 	fft(integer N_, std::vector<hpx::id_type> localities);
 	void fft_2d();
-	void apply_fft(integer M) const;
+	void apply_fft(integer M1, integer M0, integer L) const;
 	std::vector<real> read(integer xib, integer xie);
 	void transpose(std::vector<tint> P);
 	void write(std::vector<real>&& Z, integer xib, integer xie);
@@ -54,7 +54,7 @@ class fft_server: public hpx::components::managed_component_base<fft_server> {
 
 	std::vector<hpx::id_type> servers;
 	std::vector<real> X;
-	std::vector<hpx::channel<std::vector<real>>> channels;
+	std::vector<hpx::channel<std::vector<real>>>channels;
 	integer N;
 	integer begin;
 	integer end;
@@ -64,19 +64,19 @@ class fft_server: public hpx::components::managed_component_base<fft_server> {
 public:
 
 	fft_server();
-	void apply_fft(integer M);
+	void apply_fft(integer M1, integer M0, integer L);
 	void init(std::vector<hpx::id_type> servers_, integer rank_, integer N_);
 	std::vector<real> read(integer xib, integer xie);
 	void write(std::vector<real>&& Z, integer xib, integer xie);
 	void set_channel(std::vector<real>&& Z, integer orank);
 	void transpose(std::vector<tint> pindices);
 	//
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_fft); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, init); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, read); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, write); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose); //
-	HPX_DEFINE_COMPONENT_DIRECT_ACTION(fft_server, set_channel); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_fft);//
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, init);//
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, read);//
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, write);//
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose);//
+	HPX_DEFINE_COMPONENT_DIRECT_ACTION(fft_server, set_channel);//
 	//
 
 };
@@ -84,7 +84,7 @@ public:
 extern "C" {
 void transpose_re(double*, integer);
 void scramble_hi(double*, integer, integer);
-void fft_1d(double*, integer, const double*, const double*);
+void fft_1d(double*, const double*, const double*, integer, integer, integer);
 }
 
 const std::vector<real>& cos_twiddles(int N);

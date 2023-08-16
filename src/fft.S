@@ -3,9 +3,9 @@
 #define       Wr             %r13
 #define       Wi             %r12
 #define       k2             %r11
-#define       N2             %r10
-#define       NTW            %r9
-#define       N28            %r8
+#define       NTW            %r10
+#define       NNN            %r9
+#define       I              %r8
 #define       er0            %ymm0
 #define       er1            %ymm1
 #define       er2            %ymm2
@@ -21,6 +21,10 @@
 #define       tr0            %ymm12
 #define       ti0            %ymm13
 #define       two            %ymm14
+#define       STACK_SIZE     $32
+#define       Nmin           -8(%rbp)
+#define       N2             -16(%rbp)
+#define       M              -24(%rbp)
 
               .global        fft_1d
 
@@ -31,19 +35,27 @@ TWO:          .double        2.0
               .double        2.0
               .double        2.0
 
-fft_1d:       push           %rbx
+fft_1d:       push           %rbp
+              mov            %rsp, %rbp
+              sub            STACK_SIZE, %rsp
+              push           %rbx
               push           %r15
               push           %r14
               push           %r13
               push           %r12
 			  vmovapd        TWO, two
 			  mov            %rdi, X
-			  mov            %rsi, N
-			  mov            %rdx, Wr
-			  mov            %rcx, Wi
+			  mov            %rsi, Wr
+			  mov            %rdx, Wi
+			  mov            %rcx, N
+			  mov            %r8, Nmin
+			  mov            %r9, M
 			  mov            $1, %rax
 			  mov            %rax, NTW
 			  bsr            N, %rax
+			  mov            Nmin, %rdx
+			  bsr            %rdx, %rdx
+			  sub            %rdx, %rax
 			  test           $1, %rax
 			  jz             do4
 			  call           radix2
@@ -54,9 +66,11 @@ done:         pop            %r12
               pop            %r14
               pop            %r15
               pop            %rbx
+              mov            %rbp, %rsp
+              pop            %rbp
               ret
-radix2:       cmp            $2, N
-              jl             radix2_end
+radix2:       cmp            Nmin, N
+              jle            radix2_end
               push           X
               mov            N, %rdi
               shl            $2, %rdi
@@ -68,19 +82,24 @@ radix2:       cmp            $2, N
               call           radix4
               shl            N
               shr            NTW
-              mov            N, N2
-              shr            N2
-              mov            N2, N28
-              shl            $3, N28
+              mov            N, %rax
+              shr            %rax
+              mov            %rax, N2
+              mov            %rax, NNN
+              shl            NNN
+              imul           M, NNN
               xor            k2, k2
 radix2_k2:    mov            k2, %rax
               imul           NTW, %rax
               vbroadcastsd   (Wr, %rax, 8), cos1
               vbroadcastsd   (Wi, %rax, 8), sin1
-              mov            k2, %rdi
-              shl            $3, %rdi
+              xor            I, I
+radix2_I:     mov            k2, %rdi
+              imul           M, %rdi
+              add            I, %rdi
+              shl            %rdi
               lea            (X, %rdi, 8), %rax
-              lea            (%rax, N28, 8), %rbx
+              lea            (%rax, NNN, 8), %rbx
               vmovapd        (%rax), er0
               vmovapd        32(%rax), ei0
               vmovapd        (%rbx), er1
@@ -97,12 +116,15 @@ radix2_k2:    mov            k2, %rax
               vmovapd        ei0, 32(%rax)
               vmovapd        er1, (%rbx)
               vmovapd        ei1, 32(%rbx)
+              add            $4, I
+              cmp            I, M
+              jne            radix2_I
               inc            k2
               cmp            k2, N2
               jne            radix2_k2
 radix2_end:   ret
-radix4:       cmp            $4, N
-              jl             radix4_end
+radix4:       cmp            Nmin, N
+              jle            radix4_end
               push           X
               mov            N, %rdi
               shl            %rdi
@@ -122,11 +144,13 @@ radix4:       cmp            $4, N
               call           radix4
               shl            $2, N
               shr            $2, NTW
-              mov            N, N2
-              shr            $2, N2
+              mov            N, %rax
+              shr            $2, %rax
+              mov            %rax, N2
+              mov            %rax, NNN
+              shl            NNN
+              imul           M, NNN
               xor            k2, k2
-              mov            N2, N28
-              shl            $3, N28
 radix4_k2:    mov            k2, %rax
               imul           NTW, %rax
               vbroadcastsd   (Wr, %rax, 8), cos1
@@ -135,12 +159,15 @@ radix4_k2:    mov            k2, %rax
               vmulpd         cos1, sin1, sin2
               vfmsub231pd    cos1, cos1, cos2
               vfmadd231pd    sin1, cos1, sin2
-              mov            k2, %rdi
-              shl            $3, %rdi
+              xor            I, I
+radix4_I:     mov            k2, %rdi
+              imul           M, %rdi
+              add            I, %rdi
+              shl            %rdi
               lea            (X, %rdi, 8), %rax
-              lea            (%rax, N28, 8), %rbx
-              lea            (%rbx, N28, 8), %rcx
-              lea            (%rcx, N28, 8), %rdx
+              lea            (%rax, NNN, 8), %rbx
+              lea            (%rbx, NNN, 8), %rcx
+              lea            (%rcx, NNN, 8), %rdx
               vmovapd        (%rax), er0
               vmovapd        32(%rax), ei0
               vmovapd        (%rbx), er2
@@ -189,6 +216,9 @@ radix4_k2:    mov            k2, %rax
               vmovapd        ei1, 32(%rcx)
               vmovapd        er2, (%rdx)
               vmovapd        ei2, 32(%rdx)
+              add            $4, I
+              cmp            I, M
+              jne            radix4_I
               inc            k2
               cmp            k2, N2
               jne            radix4_k2

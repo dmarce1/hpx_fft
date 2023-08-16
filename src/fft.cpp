@@ -20,10 +20,10 @@ fft::fft(integer N_, std::vector<hpx::id_type> localities) {
 	hpx::wait_all(futs2.begin(), futs2.end());
 }
 
-void fft::apply_fft(integer M) const {
+void fft::apply_fft(integer M1, integer M0, integer L) const {
 	std::vector<hpx::future<void>> futs(nrank);
 	for (integer n = 0; n < nrank; n++) {
-		futs[n] = hpx::async<typename fft_server::apply_fft_action>(servers[n], M);
+		futs[n] = hpx::async<typename fft_server::apply_fft_action>(servers[n], M1, M0, L);
 	}
 	hpx::wait_all(futs.begin(), futs.end());
 }
@@ -68,9 +68,9 @@ void fft::fft_2d() {
 	//	printf("%2i %2i %2i %2i\n", i, P0[i], P0[P1[i]], P0[P1[P2[i]]]);
 	}
 	transpose(P0);
-	apply_fft(M);
+	apply_fft(M, 1, SIMD_SIZE);
 	transpose(P1);
-	apply_fft(M);
+	apply_fft(M, 1, SIMD_SIZE);
 	transpose(P2);
 }
 

@@ -4,11 +4,11 @@
 fft_server::fft_server() {
 }
 
-void fft_server::apply_fft(integer M) {
-	const auto& Wr = cos_twiddles(M);
-	const auto& Wi = sin_twiddles(M);
-	for (integer i = begin; i < end; i += 2 * M * SIMD_SIZE) {
-		fft_1d(X.data() + i - begin, M, Wr.data(), Wi.data());
+void fft_server::apply_fft(integer M1, integer M0, integer L) {
+	const auto& Wr = cos_twiddles(M1);
+	const auto& Wi = sin_twiddles(M1);
+	for (integer i = begin; i < end; i += 2 * M1 * SIMD_SIZE) {
+		fft_1d(X.data() + i - begin, Wr.data(), Wi.data(), M1, M0, L);
 	}
 }
 
@@ -48,7 +48,7 @@ void fft_server::set_channel(std::vector<real>&& Z, integer orank) {
 void fft_server::transpose(std::vector<tint> pindices) {
 	permuted_index p(pindices);
 	permuted_index pinv(invert(pindices));
-	std::vector<std::vector<real>> sends(nrank);
+	std::vector < std::vector < real >> sends(nrank);
 	std::vector<hpx::future<void>> futs;
 	std::vector<bool> has(nrank, false);
 	for (p.set_natural(begin); p.get_natural() < end; ++p) {
@@ -57,8 +57,8 @@ void fft_server::transpose(std::vector<tint> pindices) {
 		const integer orank = j * nrank / N;
 		sends[orank].push_back(X[i - begin]);
 	}
-	for( integer n = 0; n < nrank; n++) {
-		if( sends[n].size()) {
+	for (integer n = 0; n < nrank; n++) {
+		if (sends[n].size()) {
 			hpx::post<typename fft_server::set_channel_action>(servers[n], std::move(sends[n]), rank);
 		}
 	}
