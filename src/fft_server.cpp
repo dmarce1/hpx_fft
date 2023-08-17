@@ -104,7 +104,8 @@ void fft_server::transpose_x() {
 }
 
 void fft_server::transform(const std::function<int(int)>& P) {
-	std::vector < hpx::future<std::pair<std::vector<double>, std::vector<double>>> >futs;
+	std::vector < hpx::future<std::pair<std::vector<double>, std::vector<double>>> >futs1;
+	std::vector < hpx::future<void> > futs2;
 	const int sz = Nlocal * Nlocal;
 	const size_t copy_sz = sizeof(double) * sz;
 	for (int xi = lb[XDIM]; xi < ub[XDIM]; xi++) {
@@ -116,7 +117,7 @@ void fft_server::transform(const std::function<int(int)>& P) {
 			std::memcpy(x.data(), X.data() + n, copy_sz);
 			std::memcpy(y.data(), Y.data() + n, copy_sz);
 			const int orank = xj / Nlocal;
-			futs.push_back(hpx::async<typename fft_server::exchange_action>(servers[XDIM][orank], std::move(x), std::move(y), xj));
+			futs1.push_back(hpx::async<typename fft_server::exchange_action>(servers[XDIM][orank], std::move(x), std::move(y), xj));
 		}
 	}
 	int lll = 0;
@@ -124,14 +125,14 @@ void fft_server::transform(const std::function<int(int)>& P) {
 		const int xj = P(xi);
 		const int n = sz * (xi - lb[XDIM]);
 		if (xi < xj) {
-			const auto z = futs[lll].get();
-			lll++;
-			const auto& x = z.first;
-			const auto& y = z.second;
-			std::memcpy(X.data() + n, x.data(), copy_sz);
-			std::memcpy(Y.data() + n, y.data(), copy_sz);
+			futs2.push_back(futs1[lll++].then([copy_sz, n, this](hpx::future<std::pair<std::vector<double>, std::vector<double>>>&& fut) {
+				const auto z = fut.get();
+				std::memcpy(X.data() + n, z.first.data(), copy_sz);
+				std::memcpy(Y.data() + n, z.second.data(), copy_sz);
+			}));
 		}
 	}
+	hpx::wait_all(futs2.begin(), futs2.end());
 }
 
 std::vector<std::complex<double>> fft_server::read(const std::array<int, NDIM>& xlb, const std::array<int, NDIM>& xub) {

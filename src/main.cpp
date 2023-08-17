@@ -70,57 +70,61 @@ void test_fft(int N) {
 	std::vector<std::complex<double>> V(N3);
 	const int sqrtN = 1 << (std::ilogb(N) >> 1);
 	int nthreads = 1 << (NDIM * (std::ilogb(hpx::threads::hardware_concurrency() - 1) / NDIM + 1));
-	while (nthreads > sqrtN) {
+	while (nthreads > sqrtN * sqrtN * sqrtN) {
 		nthreads >>= NDIM;
 	}
 	fft3d fft(N, std::vector < hpx::id_type > (nthreads, hpx::find_here()));
-	for (int i = 0; i < N3; i++) {
-		U[i] = V[i] = std::complex<double>(rand1(), rand1());
-	}
-	fft.write(std::move(U), { 0, 0, 0 }, { N, N, N });
-
-	fft.transpose_zyx();
-	fft.scramble();
-	fft.apply_fft();
-	fft.apply_twiddles();
-	fft.transpose_x();
-	fft.apply_fft();
-	fft.transpose_x();
-	fft.transpose_zyx();
-
-	fft.transpose_yxz();
-	fft.scramble();
-	fft.apply_fft();
-	fft.apply_twiddles();
-	fft.transpose_x();
-	fft.apply_fft();
-	fft.transpose_x();
-	fft.transpose_yxz();
-
-	fft.scramble();
-	fft.apply_fft();
-	fft.apply_twiddles();
-	fft.transpose_x();
-	fft.apply_fft();
-	fft.transpose_x();
-
-	U = fft.read( { 0, 0, 0 }, { N, N, N });
-	fftw_3d(V.data(), N);
-	for (int i = 0; i < N; i++) {
-		for (int j = 0; j < N; j++) {
-			for (int k = 0; k < N; k++) {
-				const int nnn = k + N * (j + N * i);
-				if (U[nnn].real() - V[nnn].real() || U[nnn].imag() - V[nnn].imag()) {
-					printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, U[nnn].real(), U[nnn].imag(), V[nnn].real(), V[nnn].imag(), U[nnn].real() - V[nnn].real(), U[nnn].imag() - V[nnn].imag());
+	for (int a = 0; a < 10; a++) {
+		for (int i = 0; i < N3; i++) {
+			U[i] = V[i] = std::complex<double>(rand1(), rand1());
+		}
+		fft.write(std::move(U), { 0, 0, 0 }, { N, N, N });
+		timer tm;
+		tm.start();
+		fft.transpose_zyx();
+		fft.scramble();
+		fft.apply_fft();
+		fft.apply_twiddles();
+		fft.transpose_x();
+		fft.apply_fft();
+		fft.transpose_x();
+		fft.transpose_zyx();
+		fft.transpose_yxz();
+		fft.scramble();
+		fft.apply_fft();
+		fft.apply_twiddles();
+		fft.transpose_x();
+		fft.apply_fft();
+		fft.transpose_x();
+		fft.transpose_yxz();
+		fft.scramble();
+		fft.apply_fft();
+		fft.apply_twiddles();
+		fft.transpose_x();
+		fft.apply_fft();
+		fft.transpose_x();
+		tm.stop();
+		U = fft.read( { 0, 0, 0 }, { N, N, N });
+		const auto tm0 = fftw_3d(V.data(), N);
+//		double tm0 = 0.0;
+		double err = 0.0;
+		for (int i = 0; i < N; i++) {
+			for (int j = 0; j < N; j++) {
+				for (int k = 0; k < N; k++) {
+					const int nnn = k + N * (j + N * i);
+					err += std::abs(U[nnn] - V[nnn]);
+//				printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, U[nnn].real(), U[nnn].imag(), V[nnn].real(), V[nnn].imag(), U[nnn].real() - V[nnn].real(), U[nnn].imag() - V[nnn].imag());
 				}
 			}
 		}
+		err /= N * N * N;
+		printf("%i %i %e %e %e\n", N, nthreads, err, tm0, tm.read());
 	}
 }
 
 int hpx_main(int argc, char *argv[]) {
-	fftw_init_threads();
-	test_fft(16);
+//	fftw_init_threads();
+	test_fft(256);
 	return hpx::finalize();
 }
 

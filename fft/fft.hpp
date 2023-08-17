@@ -61,7 +61,6 @@ public:
 	void transpose_zyx(); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_twiddles); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_fft); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, exchange); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_x); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, scramble); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, read); //
@@ -69,6 +68,7 @@ public:
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, write); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_yxz); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_zyx);
+	HPX_DEFINE_COMPONENT_DIRECT_ACTION(fft_server, exchange); //
 	//
 };
 
