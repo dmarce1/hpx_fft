@@ -122,6 +122,10 @@ void test_fft(int N) {
 	}
 }
 
+void yield() {
+	hpx::this_thread::yield();
+}
+
 int hpx_main(int argc, char *argv[]) {
 //	fftw_init_threads();
 	test_fft(256);

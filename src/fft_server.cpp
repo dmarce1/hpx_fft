@@ -14,6 +14,12 @@ void fft_server::transpose_yxz() {
 			std::memcpy(tmp.data(), X.data() + n, copy_sz);
 			std::memcpy(X.data() + n, X.data() + m, copy_sz);
 			std::memcpy(X.data() + m, tmp.data(), copy_sz);
+		}
+	}
+	for (int i = 0; i < Nlocal; i++) {
+		for (int j = i + 1; j < Nlocal; j++) {
+			const int n = Nlocal * (j + Nlocal * i);
+			const int m = Nlocal * (i + Nlocal * j);
 			std::memcpy(tmp.data(), Y.data() + n, copy_sz);
 			std::memcpy(Y.data() + n, Y.data() + m, copy_sz);
 			std::memcpy(Y.data() + m, tmp.data(), copy_sz);
@@ -63,7 +69,7 @@ void fft_server::apply_fft() {
 	const int M = Nlocal * Nlocal;
 	for (int i = 0; i < Nlocal; i += N) {
 		const int n = M * i;
-		apply_fft_1d(X.data() + n, Y.data() + n, N, M);
+		fft_1d(X.data() + n, Y.data() + n, N, M);
 	}
 }
 
@@ -79,7 +85,7 @@ void fft_server::apply_twiddles() {
 		const int n1r = bit_reverse(n1, N);
 		if (n1r * k2) {
 			const auto W = std::polar(1.0, -n1r * k2 * 2.0 * M_PI / Nglobal);
-			apply_twiddles_1d(X.data() + M * i, Y.data() + M * i, W.real(), W.imag(), (size_t) M);
+			twiddles_1d(X.data() + M * i, Y.data() + M * i, W.real(), W.imag(), (size_t) M);
 		}
 	}
 }
@@ -114,14 +120,19 @@ void fft_server::transform(const std::function<int(int)>& P) {
 			x.set(X.data() + n, sz);
 			y.set(Y.data() + n, sz);
 			const int orank = xj / Nlocal;
-			futs1.push_back(hpx::async<typename fft_server::exchange_action>(servers[XDIM][orank], std::move(x), std::move(y), xj));
+			if (hpx::get_colocation_id(servers[XDIM][orank]).get() == hpx::find_here()) {
+				hpx::post<typename fft_server::exchange_action>(servers[XDIM][orank], std::move(x), std::move(y), xj);
+			} else {
+				futs1.push_back(hpx::async<typename fft_server::exchange_action>(servers[XDIM][orank], std::move(x), std::move(y), xj));
+			}
 		}
 	}
 	int lll = 0;
 	for (int xi = lb[XDIM]; xi < ub[XDIM]; xi++) {
 		const int xj = P(xi);
 		const int n = sz * (xi - lb[XDIM]);
-		if (xi < xj) {
+		const int orank = xj / Nlocal;
+		if ((xi < xj) && (hpx::get_colocation_id(servers[XDIM][orank]).get() != hpx::find_here())) {
 			futs2.push_back(futs1[lll++].then([n, this](hpx::future<std::pair<swap_arc, swap_arc>>&& fut) {
 				const auto z = fut.get();
 				z.first.get(X.data() + n);

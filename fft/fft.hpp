@@ -10,15 +10,18 @@
 
 #define SIMD_SIZE 4
 
-#include <hpx/include/components.hpp>
 
+#ifndef __CUDACC__
+#include <hpx/include/components.hpp>
 #include <fftw3.h>
 #include <hpx/hpx.hpp>
 #include <hpx/hpx_init.hpp>
 #include <hpx/channel.hpp>
 #include <hpx/mutex.hpp>
 #include <hpx/serialization.hpp>
-#include <simd.hpp>
+#else
+#define CUDA_CHECK( a ) if( a != cudaSuccess ) printf( "CUDA error on line %i of %s : %s\n", __LINE__, __FILE__, cudaGetErrorString(a))
+#endif
 
 #include <array>
 #include <chrono>
@@ -37,6 +40,7 @@
 #define ZDIM 2
 #define NDIM 3
 
+#ifndef __CUDACC__
 class swap_arc {
 	std::vector<double> data;
 	double* ptr;
@@ -141,8 +145,14 @@ public:
 extern "C" {
 void transpose_zyx_asm(double* X, size_t N);
 size_t bit_reverse(size_t, size_t);
-void apply_fft_1d(double* X, double* Y, size_t N, size_t M);
-void apply_twiddles_1d(double* X, double* Y, double C, double S, size_t M);
+void fft_1d(double* X, double* Y, size_t N, size_t M);
+void twiddles_1d(double* X, double* Y, double C, double S, size_t M);
 }
+
+void cuda_fft_1d(double* Xh, double* Yh, int N, int M);
+
+#endif
+
+void yield();
 
 #endif /* FFT_HPP_ */
