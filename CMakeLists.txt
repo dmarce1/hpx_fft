@@ -10,6 +10,8 @@ set(fft_source_files
     src/fft.cpp
     src/fft_server.cpp
     src/main.cpp
+    src/apply_fft_1d.S
+    src/apply_twiddles_1d.S
     src/bit_reverse.S
     src/transpose.S
 )      

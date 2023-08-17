@@ -25,9 +25,9 @@ transpose_zyx_asm:
               imul           %rax, %rax
               imul           $2, %rax, %rbx
               imul           $3, %rax, %rcx
-              mov            N, M
               xor            Iy, Iy
-y_loop:       xor            Ix, Ix
+y_loop:       mov            N, M
+              xor            Ix, Ix
               xor            Iz, Iz
               call           next_level
               inc            Iy

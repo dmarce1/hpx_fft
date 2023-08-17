@@ -101,10 +101,11 @@ std::vector<std::complex<double>> fft3d::read(std::array<int, NDIM> xlb, std::ar
 					ylb[dim] = std::max(xlb[dim], zlb[dim]);
 					yub[dim] = std::min(xub[dim], zub[dim]);
 					dx2[dim] = yub[dim] - ylb[dim];
+					assert(dx2[dim]>=0);
 					vol *= dx2[dim];
 				}
 				if (vol) {
-					futs2.push_back(futs1[lll].then([&Z, this, ylb, xlb, yub, xub, dx1, dx2](hpx::future<std::vector<std::complex<double>>>&& fut) {
+					futs2.push_back(futs1[lll++].then([&Z, this, ylb, xlb, yub, xub, dx1, dx2](hpx::future<std::vector<std::complex<double>>>&& fut) {
 						const auto z = fut.get();
 						for (int i = ylb[XDIM]; i < yub[XDIM]; i++) {
 							for (int j = ylb[YDIM]; j < yub[YDIM]; j++) {
@@ -170,12 +171,12 @@ void fft3d::write(std::vector<std::complex<double>>&& Z, std::array<int, NDIM> x
 	hpx::wait_all(futs.begin(), futs.end());
 }
 
-void fft3d::scramble_x() {
+void fft3d::scramble() {
 	std::vector<hpx::future<void>> futs;
 	for (int i = 0; i < Nrank; i++) {
 		for (int j = 0; j < Nrank; j++) {
 			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::scramble_x_action>(servers[i][j][k]));
+				futs.push_back(hpx::async<typename fft_server::scramble_action>(servers[i][j][k]));
 			}
 		}
 	}
@@ -212,6 +213,30 @@ void fft3d::transpose_zyx() {
 		for (int j = 0; j < Nrank; j++) {
 			for (int k = 0; k < Nrank; k++) {
 				futs.push_back(hpx::async<typename fft_server::transpose_zyx_action>(servers[i][j][k]));
+			}
+		}
+	}
+	hpx::wait_all(futs.begin(), futs.end());
+}
+
+void fft3d::apply_fft() {
+	std::vector<hpx::future<void>> futs;
+	for (int i = 0; i < Nrank; i++) {
+		for (int j = 0; j < Nrank; j++) {
+			for (int k = 0; k < Nrank; k++) {
+				futs.push_back(hpx::async<typename fft_server::apply_fft_action>(servers[i][j][k]));
+			}
+		}
+	}
+	hpx::wait_all(futs.begin(), futs.end());
+}
+
+void fft3d::apply_twiddles() {
+	std::vector<hpx::future<void>> futs;
+	for (int i = 0; i < Nrank; i++) {
+		for (int j = 0; j < Nrank; j++) {
+			for (int k = 0; k < Nrank; k++) {
+				futs.push_back(hpx::async<typename fft_server::apply_twiddles_action>(servers[i][j][k]));
 			}
 		}
 	}

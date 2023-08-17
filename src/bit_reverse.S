@@ -8,6 +8,7 @@ bit_reverse:  push           %rbp
               mov            %rsp, %rbp
               sub            $8, %rsp
               push           %rbx
+              bsr            %rsi, %rsi
               xor            %rax, %rax
               xor            %rbx, %rbx
               xor            %rcx, %rcx

@@ -31,11 +31,13 @@ void fft_server::transpose_zyx() {
 	} else {
 		for (int i = 0; i < Nlocal; i++) {
 			for (int j = 0; j < Nlocal; j++) {
-				for (int k = i + 1; k < Nlocal; k++) {
+				for (int k = 0; k < Nlocal; k++) {
 					const int n = k + Nlocal * (j + Nlocal * i);
 					const int m = i + Nlocal * (j + Nlocal * k);
-					std::swap(X[n], X[m]);
-					std::swap(Y[n], Y[m]);
+					if (n > m) {
+						std::swap(X[n], X[m]);
+						std::swap(Y[n], Y[m]);
+					}
 				}
 			}
 		}
@@ -45,7 +47,7 @@ void fft_server::transpose_zyx() {
 	std::swap(servers[XDIM], servers[ZDIM]);
 }
 
-std::pair<std::vector<double>, std::vector<double>> fft_server::exchange_x(std::vector<double>&& x, std::vector<double>&& y, int xi) {
+std::pair<std::vector<double>, std::vector<double>> fft_server::exchange(std::vector<double>&& x, std::vector<double>&& y, int xi) {
 	const size_t copy_sz = sizeof(double) * x.size();
 	std::pair<std::vector<double>, std::vector<double>> rc;
 	rc.first.resize(x.size());
@@ -58,21 +60,50 @@ std::pair<std::vector<double>, std::vector<double>> fft_server::exchange_x(std::
 	return std::move(rc);
 }
 
-void fft_server::scramble_x() {
-	transform_x([this](int i) {
-		const int j = bit_reverse(i, std::ilogb(Nglobal));
-		printf( "%i %i %i\n", i, j, Nglobal);
+void fft_server::apply_fft() {
+	const int N = 1 << (std::ilogb(Nglobal) >> 1);
+	const int M = Nlocal * Nlocal;
+	for (int i = 0; i < Nlocal; i += N) {
+		const int n = M * i;
+		apply_fft_1d(X.data() + n, Y.data() + n, N, M);
+	}
+}
+
+void fft_server::apply_twiddles() {
+	const int N = 1 << (std::ilogb(Nglobal) >> 1);
+	const int log2N = std::ilogb(N);
+	const int mask = N - 1;
+	const int M = Nlocal * Nlocal;
+	for (int i = 0; i < Nlocal; i++) {
+		const int j = lb[XDIM] + i;
+		const int k2 = j & mask;
+		const int n1 = j >> log2N;
+		const int n1r = bit_reverse(n1, N);
+		if (n1r * k2) {
+			const auto W = std::polar(1.0, -n1r * k2 * 2.0 * M_PI / Nglobal);
+			apply_twiddles_1d(X.data() + M * i, Y.data() + M * i, W.real(), W.imag(), (size_t) M);
+		}
+	}
+}
+
+void fft_server::scramble() {
+	transform([this](int i) {
+		const int j = bit_reverse(i, Nglobal);
 		return j;
 	});
 }
 
 void fft_server::transpose_x() {
-	transform_x([this](int i) {
-		return (i + (Nglobal >> 1)) % Nglobal;
+	transform([this](int ii) {
+		const int N = 1 << (std::ilogb(Nglobal) >> 1);
+		const int ix = ii >> std::ilogb(N);
+		const int iy = ii & (N - 1);
+		const int jj = iy * N + ix;
+		return jj;
 	});
 }
 
-void fft_server::transform_x(const std::function<int(int)>& P) {
+void fft_server::transform(const std::function<int(int)>& P) {
 	std::vector < hpx::future<std::pair<std::vector<double>, std::vector<double>>> >futs;
 	const int sz = Nlocal * Nlocal;
 	const size_t copy_sz = sizeof(double) * sz;
@@ -85,7 +116,7 @@ void fft_server::transform_x(const std::function<int(int)>& P) {
 			std::memcpy(x.data(), X.data() + n, copy_sz);
 			std::memcpy(y.data(), Y.data() + n, copy_sz);
 			const int orank = xj / Nlocal;
-			futs.push_back(hpx::async<typename fft_server::exchange_x_action>(servers[XDIM][orank], std::move(x), std::move(y), xj));
+			futs.push_back(hpx::async<typename fft_server::exchange_action>(servers[XDIM][orank], std::move(x), std::move(y), xj));
 		}
 	}
 	int lll = 0;

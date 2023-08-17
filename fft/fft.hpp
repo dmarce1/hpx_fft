@@ -51,15 +51,19 @@ public:
 	void set_servers(std::array<std::vector<hpx::id_type>, NDIM>&&); //
 	void write(std::vector<std::complex<double>>&&, const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
 	std::vector<std::complex<double>> read(const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
-	std::pair<std::vector<double>, std::vector<double>> exchange_x(std::vector<double>&&, std::vector<double>&&, int xi);
-	void transform_x(const std::function<int(int)>&);
-	void scramble_x();
+	std::pair<std::vector<double>, std::vector<double>> exchange(std::vector<double>&&, std::vector<double>&&, int xi);
+	void apply_fft();
+	void apply_twiddles();
+	void transform(const std::function<int(int)>&);
+	void scramble();
 	void transpose_x();
 	void transpose_yxz();
 	void transpose_zyx(); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, exchange_x); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_twiddles); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_fft); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, exchange); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_x); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, scramble_x); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, scramble); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, read); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, set_servers); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, write); //
@@ -75,7 +79,9 @@ class fft3d {
 	std::vector<std::vector<std::vector<hpx::id_type>>>servers;
 public:
 	fft3d(int, std::vector<hpx::id_type>&& );
-	void scramble_x();
+	void apply_fft();
+	void apply_twiddles();
+	void scramble();
 	void transpose_x();
 	void transpose_yxz();
 	void transpose_zyx(); //
@@ -86,6 +92,8 @@ public:
 extern "C" {
 void transpose_zyx_asm(double* X, size_t N);
 size_t bit_reverse(size_t, size_t);
+void apply_fft_1d(double* X, double* Y, size_t N, size_t M);
+void apply_twiddles_1d(double* X, double* Y, double C, double S, size_t M);
 }
 
 #endif /* FFT_HPP_ */
