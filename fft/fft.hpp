@@ -17,6 +17,7 @@
 #include <hpx/hpx_init.hpp>
 #include <hpx/channel.hpp>
 #include <hpx/mutex.hpp>
+#include <hpx/serialization.hpp>
 #include <simd.hpp>
 
 #include <array>
@@ -36,6 +37,54 @@
 #define ZDIM 2
 #define NDIM 3
 
+class swap_arc {
+	std::vector<double> data;
+	double* ptr;
+	int len;
+	bool remote;
+public:
+	inline swap_arc() {
+		remote = false;
+	}
+	inline void set(double* p, int l) {
+		ptr = p;
+		len = l;
+	}
+	inline int size() const {
+		return len;
+	}
+	inline void swap(double* other) {
+		double* cur = remote ? data.data() : ptr;
+		for (int i = 0; i < len; i++) {
+			std::swap(cur[i], other[i]);
+		}
+	}
+	inline void get(double* other) const {
+		if (remote) {
+			std::memcpy(other, data.data(), len * sizeof(double));
+		}
+	}
+	template<class A>
+	inline void save(A& arc, unsigned) const {
+		const double* cur = remote ? data.data() : ptr;
+		arc << len;
+		for (int i = 0; i < len; i++) {
+			arc << cur[i];
+		}
+	}
+	template<class A>
+	inline void load(A& arc, unsigned) {
+		double* cur = remote ? data.data() : ptr;
+		remote = true;
+		arc >> len;
+		data.resize(len);
+		for (int i = 0; i < len; i++) {
+			arc >> data[i];
+		}
+	}
+	HPX_SERIALIZATION_SPLIT_MEMBER ();
+};
+
 class fft_server: public hpx::components::managed_component_base<fft_server> {
 	const int Nglobal;
 	int Nrank;
@@ -51,7 +100,7 @@ public:
 	void set_servers(std::array<std::vector<hpx::id_type>, NDIM>&&); //
 	void write(std::vector<std::complex<double>>&&, const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
 	std::vector<std::complex<double>> read(const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
-	std::pair<std::vector<double>, std::vector<double>> exchange(std::vector<double>&&, std::vector<double>&&, int xi);
+	std::pair<swap_arc, swap_arc> exchange(swap_arc&&, swap_arc&&, int xi);
 	void apply_fft();
 	void apply_twiddles();
 	void transform(const std::function<int(int)>&);
@@ -67,8 +116,8 @@ public:
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, set_servers); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, write); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_yxz); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_zyx);
-	HPX_DEFINE_COMPONENT_DIRECT_ACTION(fft_server, exchange); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_zyx);HPX_DEFINE_COMPONENT_DIRECT_ACTION(fft_server, exchange);
+	//
 	//
 };
 

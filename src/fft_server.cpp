@@ -47,16 +47,14 @@ void fft_server::transpose_zyx() {
 	std::swap(servers[XDIM], servers[ZDIM]);
 }
 
-std::pair<std::vector<double>, std::vector<double>> fft_server::exchange(std::vector<double>&& x, std::vector<double>&& y, int xi) {
+std::pair<swap_arc, swap_arc> fft_server::exchange(swap_arc&& x, swap_arc&& y, int xi) {
 	const size_t copy_sz = sizeof(double) * x.size();
-	std::pair<std::vector<double>, std::vector<double>> rc;
-	rc.first.resize(x.size());
-	rc.second.resize(y.size());
+	std::pair<swap_arc, swap_arc> rc;
 	const int n = Nlocal * Nlocal * (xi - lb[XDIM]);
-	std::memcpy(rc.first.data(), X.data() + n, copy_sz);
-	std::memcpy(X.data() + n, x.data(), copy_sz);
-	std::memcpy(rc.second.data(), Y.data() + n, copy_sz);
-	std::memcpy(Y.data() + n, y.data(), copy_sz);
+	x.swap(X.data() + n);
+	y.swap(Y.data() + n);
+	rc.first = std::move(x);
+	rc.second = std::move(y);
 	return std::move(rc);
 }
 
@@ -104,18 +102,17 @@ void fft_server::transpose_x() {
 }
 
 void fft_server::transform(const std::function<int(int)>& P) {
-	std::vector < hpx::future<std::pair<std::vector<double>, std::vector<double>>> >futs1;
+	std::vector < hpx::future<std::pair<swap_arc, swap_arc>> > futs1;
 	std::vector < hpx::future<void> > futs2;
 	const int sz = Nlocal * Nlocal;
-	const size_t copy_sz = sizeof(double) * sz;
 	for (int xi = lb[XDIM]; xi < ub[XDIM]; xi++) {
 		const int xj = P(xi);
 		const int n = sz * (xi - lb[XDIM]);
 		if (xi < xj) {
-			std::vector<double> x(sz);
-			std::vector<double> y(sz);
-			std::memcpy(x.data(), X.data() + n, copy_sz);
-			std::memcpy(y.data(), Y.data() + n, copy_sz);
+			swap_arc x;
+			swap_arc y;
+			x.set(X.data() + n, sz);
+			y.set(Y.data() + n, sz);
 			const int orank = xj / Nlocal;
 			futs1.push_back(hpx::async<typename fft_server::exchange_action>(servers[XDIM][orank], std::move(x), std::move(y), xj));
 		}
@@ -125,10 +122,10 @@ void fft_server::transform(const std::function<int(int)>& P) {
 		const int xj = P(xi);
 		const int n = sz * (xi - lb[XDIM]);
 		if (xi < xj) {
-			futs2.push_back(futs1[lll++].then([copy_sz, n, this](hpx::future<std::pair<std::vector<double>, std::vector<double>>>&& fut) {
+			futs2.push_back(futs1[lll++].then([n, this](hpx::future<std::pair<swap_arc, swap_arc>>&& fut) {
 				const auto z = fut.get();
-				std::memcpy(X.data() + n, z.first.data(), copy_sz);
-				std::memcpy(Y.data() + n, z.second.data(), copy_sz);
+				z.first.get(X.data() + n);
+				z.second.get(Y.data() + n);
 			}));
 		}
 	}
