@@ -10,7 +10,6 @@
 
 #define SIMD_SIZE 4
 
-
 #ifndef __CUDACC__
 #include <hpx/include/components.hpp>
 #include <fftw3.h>
@@ -35,59 +34,9 @@
 #include <utility>
 #include <vector>
 
-#define XDIM 0
-#define YDIM 1
-#define ZDIM 2
-#define NDIM 3
+#include <fft/fft_vector.hpp>
 
 #ifndef __CUDACC__
-class swap_arc {
-	std::vector<double> data;
-	double* ptr;
-	int len;
-	bool remote;
-public:
-	inline swap_arc() {
-		remote = false;
-	}
-	inline void set(double* p, int l) {
-		ptr = p;
-		len = l;
-	}
-	inline int size() const {
-		return len;
-	}
-	inline void swap(double* other) {
-		double* cur = remote ? data.data() : ptr;
-		for (int i = 0; i < len; i++) {
-			std::swap(cur[i], other[i]);
-		}
-	}
-	inline void get(double* other) const {
-		if (remote) {
-			std::memcpy(other, data.data(), len * sizeof(double));
-		}
-	}
-	template<class A>
-	inline void save(A& arc, unsigned) const {
-		const double* cur = remote ? data.data() : ptr;
-		arc << len;
-		for (int i = 0; i < len; i++) {
-			arc << cur[i];
-		}
-	}
-	template<class A>
-	inline void load(A& arc, unsigned) {
-		double* cur = remote ? data.data() : ptr;
-		remote = true;
-		arc >> len;
-		data.resize(len);
-		for (int i = 0; i < len; i++) {
-			arc >> data[i];
-		}
-	}
-	HPX_SERIALIZATION_SPLIT_MEMBER ();
-};
 
 class fft_server: public hpx::components::managed_component_base<fft_server> {
 	const int Nglobal;
@@ -96,33 +45,29 @@ class fft_server: public hpx::components::managed_component_base<fft_server> {
 	std::array<int, NDIM> lb;
 	std::array<int, NDIM> ub;
 	std::array<std::vector<hpx::id_type>, NDIM> servers;
-	std::vector<double> X;
-	std::vector<double> Y;
-	int index(int, int, int) const;
+	fft_vector X;
+	fft_vector Y;
+	std::gslice gen_slice(int xi, int dim) const;
+	int index(int i, int j, int k) const;
+	void transform(const std::function<int(int)>&, int dim);
+	std::pair<fft_vector_slice, fft_vector_slice> exchange(fft_vector_slice&& Xslice, fft_vector_slice&& Yslice, int i, int dim);
 public:
 	fft_server(int N, const std::array<int, NDIM>& pos);
-	void set_servers(std::array<std::vector<hpx::id_type>, NDIM>&&); //
-	void write(std::vector<std::complex<double>>&&, const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
+	void apply_fft_1d(int dim, bool tw);
+	void transpose_yz();
+	void transpose(int dim);
+	void scramble(int dim);
+	void set_servers(std::array<std::vector<hpx::id_type>, NDIM>&&);
+	void write(std::vector<std::complex<double>>&&, const std::array<int, NDIM>&, const std::array<int, NDIM>&);
 	std::vector<std::complex<double>> read(const std::array<int, NDIM>&, const std::array<int, NDIM>&); //
-	std::pair<swap_arc, swap_arc> exchange(swap_arc&&, swap_arc&&, int xi);
-	void apply_fft();
-	void apply_twiddles();
-	void transform(const std::function<int(int)>&);
-	void scramble();
-	void transpose_x();
-	void transpose_yxz();
-	void transpose_zyx(); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_twiddles); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_fft); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_x); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, scramble); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, apply_fft_1d); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, exchange); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, read); //
 	HPX_DEFINE_COMPONENT_ACTION(fft_server, set_servers); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, write); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_yxz); //
-	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_zyx);HPX_DEFINE_COMPONENT_DIRECT_ACTION(fft_server, exchange);
-	//
-	//
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, transpose_yz); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, scramble); //
+	HPX_DEFINE_COMPONENT_ACTION(fft_server, write);
 };
 
 class fft3d {
@@ -132,13 +77,11 @@ class fft3d {
 	std::vector<std::vector<std::vector<hpx::id_type>>>servers;
 public:
 	fft3d(int, std::vector<hpx::id_type>&& );
-	void apply_fft();
-	void apply_twiddles();
-	void scramble();
-	void transpose_x();
-	void transpose_yxz();
-	void transpose_zyx(); //
-	void write(std::vector<std::complex<double>>&&, std::array<int, NDIM>, std::array<int, NDIM>);//
+	void transpose_yz();
+	void transpose(int dim);
+	void apply_fft_1d(int dim, bool tw);
+	void scramble(int dim);
+	void write(std::vector<std::complex<double>>&&, std::array<int, NDIM>, std::array<int, NDIM>);	//
 	std::vector<std::complex<double>> read(std::array<int, NDIM>, std::array<int, NDIM>);//
 };
 
@@ -146,10 +89,10 @@ extern "C" {
 void transpose_zyx_asm(double* X, size_t N);
 size_t bit_reverse(size_t, size_t);
 void fft_1d(double* X, double* Y, size_t N, size_t M);
-void twiddles_1d(double* X, double* Y, double C, double S, size_t M);
+void twiddles(double* X, double* Y, double C, double S, size_t M);
+void transpose_xy(double* X, size_t N);
 }
 
-void cuda_fft_1d(double* Xh, double* Yh, int N, int M);
 
 #endif
 

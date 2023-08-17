@@ -171,74 +171,51 @@ void fft3d::write(std::vector<std::complex<double>>&& Z, std::array<int, NDIM> x
 	hpx::wait_all(futs.begin(), futs.end());
 }
 
-void fft3d::scramble() {
+void fft3d::scramble(int dim) {
 	std::vector<hpx::future<void>> futs;
 	for (int i = 0; i < Nrank; i++) {
 		for (int j = 0; j < Nrank; j++) {
 			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::scramble_action>(servers[i][j][k]));
+				futs.push_back(hpx::async<typename fft_server::scramble_action>(servers[i][j][k], dim));
 			}
 		}
 	}
 	hpx::wait_all(futs.begin(), futs.end());
 }
 
-void fft3d::transpose_x() {
+void fft3d::transpose(int dim) {
 	std::vector<hpx::future<void>> futs;
 	for (int i = 0; i < Nrank; i++) {
 		for (int j = 0; j < Nrank; j++) {
 			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::transpose_x_action>(servers[i][j][k]));
+				futs.push_back(hpx::async<typename fft_server::transpose_action>(servers[i][j][k], dim));
 			}
 		}
 	}
 	hpx::wait_all(futs.begin(), futs.end());
 }
 
-void fft3d::transpose_yxz() {
+void fft3d::apply_fft_1d(int dim, bool tw) {
 	std::vector<hpx::future<void>> futs;
 	for (int i = 0; i < Nrank; i++) {
 		for (int j = 0; j < Nrank; j++) {
 			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::transpose_yxz_action>(servers[i][j][k]));
+				futs.push_back(hpx::async<typename fft_server::apply_fft_1d_action>(servers[i][j][k], dim, tw));
 			}
 		}
 	}
 	hpx::wait_all(futs.begin(), futs.end());
 }
 
-void fft3d::transpose_zyx() {
+void fft3d::transpose_yz() {
 	std::vector<hpx::future<void>> futs;
 	for (int i = 0; i < Nrank; i++) {
 		for (int j = 0; j < Nrank; j++) {
 			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::transpose_zyx_action>(servers[i][j][k]));
+				futs.push_back(hpx::async<typename fft_server::transpose_yz_action>(servers[i][j][k]));
 			}
 		}
 	}
 	hpx::wait_all(futs.begin(), futs.end());
 }
 
-void fft3d::apply_fft() {
-	std::vector<hpx::future<void>> futs;
-	for (int i = 0; i < Nrank; i++) {
-		for (int j = 0; j < Nrank; j++) {
-			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::apply_fft_action>(servers[i][j][k]));
-			}
-		}
-	}
-	hpx::wait_all(futs.begin(), futs.end());
-}
-
-void fft3d::apply_twiddles() {
-	std::vector<hpx::future<void>> futs;
-	for (int i = 0; i < Nrank; i++) {
-		for (int j = 0; j < Nrank; j++) {
-			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::apply_twiddles_action>(servers[i][j][k]));
-			}
-		}
-	}
-	hpx::wait_all(futs.begin(), futs.end());
-}

@@ -9,11 +9,11 @@
 #define       tr             %ymm4
 #define       ti             %ymm5
 
-              .global        twiddles_1d
+              .global        twiddles
 
               .text
 
-twiddles_1d:  vbroadcastsd   %xmm0, C
+twiddles:     vbroadcastsd   %xmm0, C
               vbroadcastsd   %xmm1, S
               xor            I, I
 loop:         vmovapd        (X, I, 8), er

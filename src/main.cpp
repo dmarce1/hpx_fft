@@ -76,33 +76,32 @@ void test_fft(int N) {
 	fft3d fft(N, std::vector < hpx::id_type > (nthreads, hpx::find_here()));
 	for (int a = 0; a < 10; a++) {
 		for (int i = 0; i < N3; i++) {
-			U[i] = V[i] = std::complex<double>(rand1(), rand1());
+			U[i] = V[i] = std::complex<double>(i % N, i % N);
 		}
 		fft.write(std::move(U), { 0, 0, 0 }, { N, N, N });
 		timer tm;
 		tm.start();
-		fft.transpose_zyx();
-		fft.scramble();
-		fft.apply_fft();
-		fft.apply_twiddles();
-		fft.transpose_x();
-		fft.apply_fft();
-		fft.transpose_x();
-		fft.transpose_zyx();
-		fft.transpose_yxz();
-		fft.scramble();
-		fft.apply_fft();
-		fft.apply_twiddles();
-		fft.transpose_x();
-		fft.apply_fft();
-		fft.transpose_x();
-		fft.transpose_yxz();
-		fft.scramble();
-		fft.apply_fft();
-		fft.apply_twiddles();
-		fft.transpose_x();
-		fft.apply_fft();
-		fft.transpose_x();
+
+		fft.scramble(XDIM);
+		fft.apply_fft_1d(XDIM, true);
+		fft.transpose(XDIM);
+		fft.apply_fft_1d(XDIM, false);
+		fft.transpose(XDIM);
+
+		fft.scramble(YDIM);
+		fft.apply_fft_1d(YDIM, true);
+		fft.transpose(YDIM);
+		fft.apply_fft_1d(YDIM, false);
+		fft.transpose(YDIM);
+
+		fft.transpose_yz();
+		fft.scramble(YDIM);
+		fft.apply_fft_1d(YDIM, true);
+		fft.transpose(YDIM);
+		fft.apply_fft_1d(YDIM, false);
+		fft.transpose(YDIM);
+		fft.transpose_yz();
+
 		tm.stop();
 		U = fft.read( { 0, 0, 0 }, { N, N, N });
 		const auto tm0 = fftw_3d(V.data(), N);
@@ -113,7 +112,7 @@ void test_fft(int N) {
 				for (int k = 0; k < N; k++) {
 					const int nnn = k + N * (j + N * i);
 					err += std::abs(U[nnn] - V[nnn]);
-//				printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, U[nnn].real(), U[nnn].imag(), V[nnn].real(), V[nnn].imag(), U[nnn].real() - V[nnn].real(), U[nnn].imag() - V[nnn].imag());
+					printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, U[nnn].real(), U[nnn].imag(), V[nnn].real(), V[nnn].imag(), U[nnn].real() - V[nnn].real(), U[nnn].imag() - V[nnn].imag());
 				}
 			}
 		}
@@ -127,8 +126,8 @@ void yield() {
 }
 
 int hpx_main(int argc, char *argv[]) {
-//	fftw_init_threads();
-	test_fft(256);
+	fftw_init_threads();
+	test_fft(16);
 	return hpx::finalize();
 }
 
