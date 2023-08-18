@@ -110,18 +110,18 @@ void fft_server::transpose(int dim) {
 }
 
 void fft_server::transpose_yz() {
-	for (int xi = 0; xi < Nlocal; xi++) {
+/*	for (int xi = 0; xi < Nlocal; xi++) {
 		const int n = xi * Nlocal * Nlocal;
 		transpose_xy(X.data() + n, Nlocal);
 		transpose_xy(Y.data() + n, Nlocal);
 	}
 	std::swap(lb[ZDIM], lb[YDIM]);
 	std::swap(ub[ZDIM], ub[YDIM]);
-	std::swap(servers[ZDIM], servers[YDIM]);
+	std::swap(servers[ZDIM], servers[YDIM]);*/
 }
 
 void fft_server::apply_fft_1d(int dim, bool tw) {
-	const int N = 1 << (std::ilogb(Nglobal) >> 1);
+/*	const int N = 1 << (std::ilogb(Nglobal) >> 1);
 	const int mask = N - 1;
 	const int shft = std::ilogb(N);
 	assert( N <= Nlocal);
@@ -163,7 +163,7 @@ void fft_server::apply_fft_1d(int dim, bool tw) {
 				}
 			}
 		}
-	}
+	}*/
 }
 
 void fft_server::scramble(int dim) {

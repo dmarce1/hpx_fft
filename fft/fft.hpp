@@ -88,14 +88,17 @@ public:
 extern "C" {
 void transpose_zyx_asm(double* X, size_t N);
 size_t bit_reverse(size_t, size_t);
-void fft_1d(double* X, double* Y, size_t N, size_t M);
+void fft_batch_1d(double* X, double* Y, size_t N, size_t M);
 void twiddles(double* X, double* Y, double C, double S, size_t M);
-void transpose_xy(double* X, size_t N);
+void scramble(double* X, size_t N);
+void transpose_re(double* X, size_t N1, size_t N2);
+void transpose_hi(double* X, size_t N);
 }
 
 
 #endif
 
-void yield();
+void fft_3d_local(double* X, double* Y, int N);
 
+void yield();
 #endif /* FFT_HPP_ */

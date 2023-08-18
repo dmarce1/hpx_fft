@@ -28,7 +28,7 @@
 #define       N0             -32(%rbp)
 
 
-              .global        fft_1d
+              .global        fft_batch_1d
 
               .text
 
@@ -38,7 +38,7 @@ TWO:          .double        2.0
               .double        2.0
               .double        2.0
 
-fft_1d:       push           %rbp
+fft_batch_1d: push           %rbp
               mov            %rsp, %rbp
               sub            STACK_SIZE, %rsp
               push           %r15
@@ -103,10 +103,8 @@ k2_loop_2:    mov            k2, %rax
               fmull          twopioN
               fsin
               fstpl          sin0
-              vmovq          cos0, %xmm0
-              vmovq          sin0, %xmm1
-              vbroadcastsd   %xmm0, cos1
-              vbroadcastsd   %xmm1, sin1
+              vbroadcastsd   cos0, cos1
+              vbroadcastsd   sin0, sin1
               xor            I, I
 I_loop_2:     mov            k2, %rdx
               imul           M, %rdx
@@ -191,10 +189,8 @@ k2_loop_4:    mov            k2, %rax
               fmull          twopioN
               fsin
               fstpl          sin0
-              vmovq          cos0, %xmm0
-              vmovq          sin0, %xmm1
-              vbroadcastsd   %xmm0, cos1
-              vbroadcastsd   %xmm1, sin1
+              vbroadcastsd   cos0, cos1
+              vbroadcastsd   sin0, sin1
               vmulpd         sin1, sin1, cos2
               vmulpd         cos1, sin1, sin2
               vfmsub231pd    cos1, cos1, cos2
