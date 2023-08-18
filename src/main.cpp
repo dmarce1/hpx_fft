@@ -66,7 +66,10 @@ void operator delete[](void *p) {
 
 void test_fft(int N) {
 	const size_t N3 = N * N * N;
-	for (int n = 0; n < 2; n++) {
+	double a = 0.0;
+	double err = 0.0;
+	double b = 0.0;
+	for (int n = 0; n < 11; n++) {
 		std::vector<double> X(N3);
 		std::vector<double> Y(N3);
 		std::vector<std::complex<double>> V(N3);
@@ -80,20 +83,24 @@ void test_fft(int N) {
 		fft_3d_local(X.data(), Y.data(), N);
 		tm.stop();
 		const auto tm0 = fftw_3d(V.data(), N);
-		double err = 0.0;
+		err = 0.0;
 		for (int i = 0; i < N; i++) {
 			for (int j = 0; j < N; j++) {
 				for (int k = 0; k < N; k++) {
 					const int nnn = k + N * (j + N * i);
 					const std::complex<double> Z(X[nnn], Y[nnn]);
 					err += std::abs(Z - V[nnn]);
-			//		printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, Z.real(), Z.imag(), V[nnn].real(), V[nnn].imag(), Z.real() - V[nnn].real(), Z.imag() - V[nnn].imag());
+					//		printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, Z.real(), Z.imag(), V[nnn].real(), V[nnn].imag(), Z.real() - V[nnn].real(), Z.imag() - V[nnn].imag());
 				}
 			}
 		}
 		err /= N * N * N;
-		printf("%i %e %e %e\n", N, err, tm0, tm.read());
+		if (n) {
+			a += tm0;
+			b += tm.read();
+		}
 	}
+	printf("%i %e %e %e\n", N, err, a, b);
 
 }
 
