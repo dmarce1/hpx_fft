@@ -34,7 +34,7 @@ scramble:     push           %r15
               mov            X, %rdi
               mov            N1, %rsi
               mov            N2, %rdx
-              call           transpose_re
+              call           transpose_zyx
               mov            X, %rdi
               mov            N1, %rsi
               mov            N1, %rdx

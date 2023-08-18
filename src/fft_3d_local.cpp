@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-void transpose_xy(double* x, int N) {
+void transpose_yx(double* x, int N) {
 	std::vector<double> tmp(N);
 	const int copy_sz = N * sizeof(double);
 	for (int i = 0; i < N; i++) {
@@ -48,15 +48,13 @@ void fft_3d_local(double* X, double* Y, int N) {
 		const int n = xi * N * N;
 		scramble_hi(X + n, N, N);
 		scramble_hi(Y + n, N, N);
-		transpose_re(X + n, N, 1);
-		transpose_re(Y + n, N, 1);
+		transpose_zy(X + n, N);
+		transpose_zy(Y + n, N);
 		scramble_hi(X + n, N, N);
 		scramble_hi(Y + n, N, N);
-		transpose_re(X + n, N, 1);
-		transpose_re(Y + n, N, 1);
+		transpose_zy(X + n, N);
+		transpose_zy(Y + n, N);
+		fft_vector_2d(X + n, Y + n, Wrptr.data(), Wiptr.data(), N, N);
 	}
-    for (int yi = 0; yi < N; yi++) {
-		fft_vector_2d(X + yi * N * N, Y + yi * N * N, Wrptr.data(), Wiptr.data(), N, N);
-	}
-	fft_batch_1d(X, Y, N, N * N);
+	fft_batch_1d(X, Y, Wr[log2N].data(), Wi[log2N].data(), N, N * N);
 }

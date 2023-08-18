@@ -1,8 +1,8 @@
 #define       X              %r15
 #define       Y              %r14
 #define       N              %r13
-#define       M              %r12
-#define       N2             %r11
+#define       Wr             %r12
+#define       Wi             %r11
 #define       MN2            %r10
 #define       k2             %r9
 #define       I              %r8
@@ -22,10 +22,9 @@
 #define       ti             %ymm14
 #define       two            %ymm15
 #define       STACK_SIZE     $32
-#define       twopioN        -8(%rbp)
-#define       cos0           -16(%rbp)
-#define       sin0           -24(%rbp)
-#define       N0             -32(%rbp)
+#define       N2             -8(%rbp)
+#define       M              -16(%rbp)
+#define       NTW            -24(%rbp)
 
 
               .global        fft_batch_1d
@@ -48,9 +47,13 @@ fft_batch_1d: push           %rbp
               push           %rbx
               mov            %rdi, X
               mov            %rsi, Y
-              mov            %rdx, N
-              mov            %rcx, M
+              mov            %rdx, Wr
+              mov            %rcx, Wi
+              mov            %r8, N
+              mov            %r9, M
               vmovapd        TWO, two
+              mov            $1, %rax
+              mov            %rax, NTW
               bsr            N, %rax
               test           $1, %rax
               jnz            do2
@@ -74,37 +77,27 @@ radix2:       cmp            $2, N
               lea            (X, %rax, 4), X
               lea            (Y, %rax, 4), Y
               shr            N
+              mov            NTW, %rax
+              shl            %rax
+              mov            %rax, NTW
               call           radix4
               pop            Y
               pop            X
               call           radix4
+              mov            NTW, %rax
+              shr            %rax
+              mov            %rax, NTW
               shl            N
-skip_2:       fldpi
-              fldpi
-              faddp
-              mov            N, N0
-              fildl          N0
-              fdivrp
-              fchs
-              fstpl          twopioN
-              mov            N, N2
-              shr            N2
-              mov            N2, MN2
+skip_2:       mov            N, %rax
+              shr            %rax
+              mov            %rax, N2
+              mov            %rax, MN2
               imul           M, MN2
               xor            k2, k2
 k2_loop_2:    mov            k2, %rax
-              mov            %rax, cos0
-              mov            %rax, sin0
-              fildl          cos0
-              fmull          twopioN
-              fcos
-              fstpl          cos0
-              fildl          sin0
-              fmull          twopioN
-              fsin
-              fstpl          sin0
-              vbroadcastsd   cos0, cos1
-              vbroadcastsd   sin0, sin1
+              imul           NTW, %rax
+              vbroadcastsd   (Wr, %rax, 8), cos1
+              vbroadcastsd   (Wi, %rax, 8), sin1
               xor            I, I
 I_loop_2:     mov            k2, %rdx
               imul           M, %rdx
@@ -153,6 +146,9 @@ radix4:       cmp            $4, N
               lea            (X, %rax, 2), X
               lea            (Y, %rax, 2), Y
               shr            $2, N
+              mov            NTW, %rax
+              shl            $2, %rax
+              mov            %rax, NTW
               call           radix4
               pop            Y
               pop            X
@@ -163,34 +159,21 @@ radix4:       cmp            $4, N
               pop            Y
               pop            X
               call           radix4
+              mov            NTW, %rax
+              shr            $2, %rax
+              mov            %rax, NTW
               shl            $2, N
-skip_4:       fldpi
-              fldpi
-              faddp
-              mov            N, N0
-              fildl          N0
-              fdivrp
-              fchs
-              fstpl          twopioN
-              mov            N, N2
-              shr            $2, N2
-              mov            N2, MN2
+skip_4:       mov            N, %rax
+              shr            $2, %rax
+              mov            %rax, N2
+              mov            %rax, MN2
               imul           M, MN2
               shl            MN2
               xor            k2, k2
 k2_loop_4:    mov            k2, %rax
-              mov            %rax, cos0
-              mov            %rax, sin0
-              fildl          cos0
-              fmull          twopioN
-              fcos
-              fstpl          cos0
-              fildl          sin0
-              fmull          twopioN
-              fsin
-              fstpl          sin0
-              vbroadcastsd   cos0, cos1
-              vbroadcastsd   sin0, sin1
+              imul           NTW, %rax
+              vbroadcastsd   (Wr, %rax, 8), cos1
+              vbroadcastsd   (Wi, %rax, 8), sin1
               vmulpd         sin1, sin1, cos2
               vmulpd         cos1, sin1, sin2
               vfmsub231pd    cos1, cos1, cos2

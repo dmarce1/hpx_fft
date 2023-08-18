@@ -17,7 +17,8 @@ set(fft_source_files
     src/main.cpp
     src/scramble.S
     src/scramble_hi.S
-    src/transpose_re.S
+    src/transpose_zy.S
+    src/transpose_zyx.S
     src/transpose_hi.S
  )      
 
