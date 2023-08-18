@@ -10,7 +10,7 @@ double fftw_3d(std::complex<double>* x, int N) {
 	if (plans.find(N) == plans.end()) {
 		in[N] = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
 		out[N] = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
-	//	fftw_plan_with_nthreads(hpx::threads::hardware_concurrency());
+		//	fftw_plan_with_nthreads(hpx::threads::hardware_concurrency());
 		plans[N] = fftw_plan_dft_3d(N, N, N, in[N], out[N], FFTW_FORWARD, FFTW_MEASURE);
 	}
 	auto* i = in[N];
@@ -34,7 +34,7 @@ double rand1() {
 	return (rand() + 0.5) / RAND_MAX;
 }
 
-inline int round_up(int i, int r) {
+inline std::size_t round_up(std::size_t i, std::size_t r) {
 	return r * ((i - 1) / r + 1);
 }
 
@@ -66,7 +66,7 @@ void operator delete[](void *p) {
 
 void test_fft(int N) {
 	const size_t N3 = N * N * N;
-	for (int n = 0; n < 10; n++) {
+	for (int n = 0; n < 2; n++) {
 		std::vector<double> X(N3);
 		std::vector<double> Y(N3);
 		std::vector<std::complex<double>> V(N3);
@@ -87,7 +87,7 @@ void test_fft(int N) {
 					const int nnn = k + N * (j + N * i);
 					const std::complex<double> Z(X[nnn], Y[nnn]);
 					err += std::abs(Z - V[nnn]);
-					//printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, Z.real(), Z.imag(), V[nnn].real(), V[nnn].imag(), Z.real() - V[nnn].real(), Z.imag() - V[nnn].imag());
+					printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, Z.real(), Z.imag(), V[nnn].real(), V[nnn].imag(), Z.real() - V[nnn].real(), Z.imag() - V[nnn].imag());
 				}
 			}
 		}
@@ -107,7 +107,9 @@ int hpx_main(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-	test_fft(256);
+	for (int N = 4; N <= 4; N *= 2) {
+		test_fft(N);
+	}
 	//auto i = mp_units::cgs::unit_symbols::cm;
 	//hpx::init(argc, argv);
 }
