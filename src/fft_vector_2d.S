@@ -20,10 +20,9 @@
 #define       TI00           %ymm9
 #define       COS01          %ymm10
 #define       COS10          %ymm11
-#define       COS11          %ymm12
 #define       SIN01          %ymm13
 #define       SIN10          %ymm14
-#define       SIN11          %ymm15
+#define       two            %ymm15
 #define       STACK_SIZE     $16
 #define       Wrptr          -8(%rbp)
 #define       Wiptr          -16(%rbp)
@@ -32,6 +31,12 @@
               .global        fft_vector_2d
 
               .text
+
+              .align         32
+TWO:          .double        2.0
+              .double        2.0
+              .double        2.0
+              .double        2.0
 
 fft_vector_2d:push           %rbp
               mov            %rsp, %rbp
@@ -134,10 +139,6 @@ kyloop:       vbroadcastsd   (Wr, ky, 8), COS10
               xor            kz, kz
 kzloop:       vmovapd        (Wr, kz, 8), COS01
               vmovapd        (Wi, kz, 8), SIN01
-              vmulpd         SIN10, SIN01, COS11
-              vmulpd         COS10, SIN01, SIN11
-              vfmsub231pd    COS10, COS01, COS11
-              vfmadd231pd    SIN10, COS01, SIN11
               mov            ky, %rax
               imul           N0, %rax
               add            kz, %rax
@@ -156,48 +157,39 @@ kzloop:       vmovapd        (Wr, kz, 8), COS01
               vmovapd        (Y, %rcx, 8), EI10
               vmovapd        (X, %rdx, 8), ER11
               vmovapd        (Y, %rdx, 8), EI11
+	          vmovapd        TWO, two
+              vmovapd        ER00, TR00
+              vmovapd        EI00, TI00
+              vfmadd231pd    SIN01, EI01, TR00
+              vfnmadd231pd   SIN01, ER01, TI00
+              vfnmadd132pd   COS01, TR00, ER01
+              vfnmadd132pd   COS01, TI00, EI01
+              vfmsub132pd    two, ER01, ER00
+              vfmsub132pd    two, EI01, EI00
 	          vmovapd        ER10, TR00
               vmovapd        EI10, TI00
-              vmulpd         SIN10, TI00, ER10
-              vmulpd         COS10, TI00, EI10
-              vfmsub231pd    COS10, TR00, ER10
-              vfmadd231pd    SIN10, TR00, EI10
-              vmovapd        ER01, TR00
-              vmovapd        EI01, TI00
-              vmulpd         SIN01, TI00, ER01
-              vmulpd         COS01, TI00, EI01
-              vfmsub231pd    COS01, TR00, ER01
-              vfmadd231pd    SIN01, TR00, EI01
-              vmovapd        ER11, TR00
-              vmovapd        EI11, TI00
-              vmulpd         SIN11, TI00, ER11
-              vmulpd         COS11, TI00, EI11
-              vfmsub231pd    COS11, TR00, ER11
-              vfmadd231pd    SIN11, TR00, EI11
-              vmovapd        ER00, TR00
+              vfmadd231pd    SIN01, EI11, TR00
+              vfnmadd231pd   SIN01, ER11, TI00
+              vfnmadd132pd   COS01, TR00, ER11
+              vfnmadd132pd   COS01, TI00, EI11
+              vfmsub132pd    two, ER11, ER10
+              vfmsub132pd    two, EI11, EI10
+	          vmovapd        ER00, TR00
               vmovapd        EI00, TI00
-              vaddpd         ER01, ER00, ER00
-              vaddpd         EI01, EI00, EI00
-              vsubpd         ER01, TR00, ER01
-              vsubpd         EI01, TI00, EI01
-              vmovapd        ER10, TR00
-              vmovapd        EI10, TI00
-              vaddpd         ER11, ER10, ER10
-              vaddpd         EI11, EI10, EI10
-              vsubpd         ER11, TR00, ER11
-              vsubpd         EI11, TI00, EI11
-              vmovapd        ER00, TR00
-              vmovapd        EI00, TI00
-              vaddpd         ER10, ER00, ER00
-              vaddpd         EI10, EI00, EI00
-              vsubpd         ER10, TR00, ER10
-              vsubpd         EI10, TI00, EI10
-              vmovapd        ER01, TR00
+              vfmadd231pd    SIN10, EI10, TR00
+              vfnmadd231pd   SIN10, ER10, TI00
+              vfnmadd132pd   COS10, TR00, ER10
+              vfnmadd132pd   COS10, TI00, EI10
+              vfmsub132pd    two, ER10, ER00
+              vfmsub132pd    two, EI10, EI00
+	          vmovapd        ER01, TR00
               vmovapd        EI01, TI00
-              vaddpd         ER11, ER01, ER01
-              vaddpd         EI11, EI01, EI01
-              vsubpd         ER11, TR00, ER11
-              vsubpd         EI11, TI00, EI11
+              vfmadd231pd    SIN10, EI11, TR00
+              vfnmadd231pd   SIN10, ER11, TI00
+              vfnmadd132pd   COS10, TR00, ER11
+              vfnmadd132pd   COS10, TI00, EI11
+              vfmsub132pd    two, ER11, ER01
+              vfmsub132pd    two, EI11, EI01
               vmovapd        ER00, (X, %rax, 8)
               vmovapd        EI00, (Y, %rax, 8)
               vmovapd        ER01, (X, %rbx, 8)
