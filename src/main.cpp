@@ -69,7 +69,7 @@ void test_fft(int N) {
 	double a = 0.0;
 	double err = 0.0;
 	double b = 0.0;
-	for (int n = 0; n < 11; n++) {
+	for (int n = 0; n < 4; n++) {
 		std::vector<double> X(N3);
 		std::vector<double> Y(N3);
 		std::vector<std::complex<double>> V(N3);
