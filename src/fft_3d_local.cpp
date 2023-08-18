@@ -71,11 +71,11 @@ void transpose_xy(double* x, int N) {
 void fft_3d_local(double* X, double* Y, int N) {
 	const int N3 = N * N * N;
 	const int log2N = std::ilogb(N);
-	std::vector<std::vector<double>> Wr(log2N);
-	std::vector<std::vector<double>> Wi(log2N);
-	std::vector<const double*> Wrptr(log2N);
-	std::vector<const double*> Wiptr(log2N);
-	for (int n = 0; n < log2N; n++) {
+	std::vector<std::vector<double>> Wr(log2N + 1);
+	std::vector<std::vector<double>> Wi(log2N + 1);
+	std::vector<const double*> Wrptr(log2N + 1);
+	std::vector<const double*> Wiptr(log2N + 1);
+	for (int n = 0; n <= log2N; n++) {
 		const int M = 1 << n;
 		Wr[n].resize(M);
 		Wi[n].resize(M);
@@ -88,19 +88,21 @@ void fft_3d_local(double* X, double* Y, int N) {
 		Wiptr[n] = Wi[n].data();
 	}
 
-	scramble(X, N3);
-	scramble(Y, N3);
-	transpose_re(X, N, N);
-	transpose_re(Y, N, N);
-	fft_vector_3d(X, Y, Wrptr.data(), Wiptr.data(), N);
-
-	/*	// xyz
-	 scramble(X, N3);
-	 scramble(Y, N3);
-	 // zyx
-	 fft_batch_1d(X, Y, N, N * N);
-	 transpose_re(X, N, N);
-	 transpose_re(Y, N, N);
-	 // xyz
-	 vector_radix2_2d(X, Y, 0, 0, N, N);*/
+	scramble_hi(X, N, N * N);
+	scramble_hi(Y, N, N * N);
+	for (int xi = 0; xi < N; xi++) {
+		const int n = xi * N * N;
+		scramble_hi(X + n, N, N);
+		scramble_hi(Y + n, N, N);
+		transpose_re(X + n, N, 1);
+		transpose_re(Y + n, N, 1);
+		scramble_hi(X + n, N, N);
+		scramble_hi(Y + n, N, N);
+		transpose_re(X + n, N, 1);
+		transpose_re(Y + n, N, 1);
+	}
+    for (int yi = 0; yi < N; yi++) {
+		fft_vector_2d(X + yi * N * N, Y + yi * N * N, Wrptr.data(), Wiptr.data(), N, N);
+	}
+	fft_batch_1d(X, Y, N, N * N);
 }

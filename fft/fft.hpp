@@ -91,9 +91,10 @@ size_t bit_reverse(size_t, size_t);
 void fft_batch_1d(double* X, double* Y, size_t N, size_t M);
 void twiddles(double* X, double* Y, double C, double S, size_t M);
 void scramble(double* X, size_t N);
+void scramble_hi(double* X, size_t NHI, size_t NLO);
 void transpose_re(double* X, size_t N1, size_t N2);
 void transpose_hi(double* X, size_t N);
-void fft_vector_3d(double* X, double* Y, const double** Wr, const double** Wi, size_t N);
+void fft_vector_2d(double* X, double* Y, const double** Wr, const double** Wi, size_t N, size_t N0);
 }
 
 

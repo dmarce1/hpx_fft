@@ -87,7 +87,7 @@ void test_fft(int N) {
 					const int nnn = k + N * (j + N * i);
 					const std::complex<double> Z(X[nnn], Y[nnn]);
 					err += std::abs(Z - V[nnn]);
-					printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, Z.real(), Z.imag(), V[nnn].real(), V[nnn].imag(), Z.real() - V[nnn].real(), Z.imag() - V[nnn].imag());
+			//		printf("%4i %4i %4i %15e %15e %15e %15e %15e %15e\n", i, j, k, Z.real(), Z.imag(), V[nnn].real(), V[nnn].imag(), Z.real() - V[nnn].real(), Z.imag() - V[nnn].imag());
 				}
 			}
 		}
@@ -107,7 +107,7 @@ int hpx_main(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-	for (int N = 4; N <= 4; N *= 2) {
+	for (int N = 4; N <= 512; N *= 2) {
 		test_fft(N);
 	}
 	//auto i = mp_units::cgs::unit_symbols::cm;
