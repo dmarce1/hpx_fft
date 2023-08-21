@@ -13,7 +13,8 @@ set(fft_source_files
     src/fft.cpp
     src/fft_3d_local.cpp
     src/fft_server.cpp
-    src/fft_vector_2d.S
+    src/fft_2d_dit.S
+    src/fft_2d_dif.S
     src/main.cpp
     src/scramble.S
     src/scramble_hi.S

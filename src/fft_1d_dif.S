@@ -38,12 +38,6 @@
 
               .text
 
-              .align         32
-TWO:          .double        2.0
-              .double        2.0
-              .double        2.0
-              .double        2.0
-
 fft_1d_dif:   push           %rbp
               mov            %rsp, %rbp
               sub            STACK_SIZE, %rsp
@@ -150,22 +144,22 @@ radix4:       mov            N, %rax
               xor            k2, k2
 k2_loop_4:    mov            k2, %rax
               imul           NTW, %rax
-              vbroadcastsd   (Wr, %rax, 8), %ymm0
-              vbroadcastsd   (Wi, %rax, 8), %ymm1
-              vmulpd         %ymm1, %ymm1, %ymm2
-              vmulpd         %ymm0, %ymm1, %ymm3
-              vfmsub231pd    %ymm0, %ymm0, %ymm2
-              vfmadd231pd    %ymm1, %ymm0, %ymm3
-              vmulpd         %ymm1, %ymm3, %ymm4
-              vmulpd         %ymm0, %ymm3, %ymm5
-              vfmsub231pd    %ymm0, %ymm2, %ymm4
-              vfmadd231pd    %ymm1, %ymm2, %ymm5
-              vmovupd        %ymm0, cos1
-              vmovupd        %ymm1, sin1
-              vmovupd        %ymm2, cos2
-              vmovupd        %ymm3, sin2
-              vmovupd        %ymm4, cos3
-              vmovupd        %ymm5, sin3
+              vbroadcastsd   (Wr, %rax, 8), er1
+              vbroadcastsd   (Wi, %rax, 8), ei1
+              vmulpd         ei1, ei1, er2
+              vmulpd         er1, ei1, ei2
+              vfmsub231pd    er1, er1, er2
+              vfmadd231pd    ei1, er1, ei2
+              vmulpd         ei1, ei2, er3
+              vmulpd         er1, ei2, ei3
+              vfmsub231pd    er1, er2, er3
+              vfmadd231pd    ei1, er2, ei3
+              vmovupd        er1, cos1
+              vmovupd        ei1, sin1
+              vmovupd        er2, cos2
+              vmovupd        ei2, sin2
+              vmovupd        er3, cos3
+              vmovupd        ei3, sin3
               xor            I, I
 I_loop_4:     mov            k2, %rdx
               imul           M, %rdx
@@ -198,32 +192,26 @@ I_loop_4:     mov            k2, %rdx
               vsubpd         ti1, ti0, ei2
               vsubpd         ti3, tr2, er3
               vaddpd         tr3, ti2, ei3
-              vmovapd        er1, tr0
-              vmovapd        ei1, ti0
-              vmulpd         sin1, ti0, er1
-              vmulpd         cos1, ti0, ei1
-              vfmsub231pd    cos1, tr0, er1
-              vfmadd231pd    sin1, tr0, ei1
-              vmovapd        er2, tr0
-              vmovapd        ei2, ti0
-              vmulpd         sin2, ti0, er2
-              vmulpd         cos2, ti0, ei2
-              vfmsub231pd    cos2, tr0, er2
-              vfmadd231pd    sin2, tr0, ei2
-              vmovapd        er3, tr0
-              vmovapd        ei3, ti0
-              vmulpd         sin3, ti0, er3
-              vmulpd         cos3, ti0, ei3
-              vfmsub231pd    cos3, tr0, er3
-              vfmadd231pd    sin3, tr0, ei3
+              vmulpd         sin1, ei1, tr1
+              vmulpd         cos1, ei1, ti1
+              vmulpd         sin2, ei2, tr2
+              vmulpd         cos2, ei2, ti2
+              vmulpd         sin3, ei3, tr3
+              vmulpd         cos3, ei3, ti3
+              vfmsub231pd    cos1, er1, tr1
+              vfmadd231pd    sin1, er1, ti1
+              vfmsub231pd    cos2, er2, tr2
+              vfmadd231pd    sin2, er2, ti2
+              vfmsub231pd    cos3, er3, tr3
+              vfmadd231pd    sin3, er3, ti3
               vmovapd        er0, (%rax)
-              vmovapd        er1, (%rbx)
+              vmovapd        tr1, (%rbx)
               vmovapd        ei0, (%rcx)
-              vmovapd        ei1, (%rdx)
-              vmovapd        er2, (%rax, MN2, 4)
-              vmovapd        er3, (%rbx, MN2, 4)
-              vmovapd        ei2, (%rcx, MN2, 4)
-              vmovapd        ei3, (%rdx, MN2, 4)
+              vmovapd        ti1, (%rdx)
+              vmovapd        tr2, (%rax, MN2, 4)
+              vmovapd        tr3, (%rbx, MN2, 4)
+              vmovapd        ti2, (%rcx, MN2, 4)
+              vmovapd        ti3, (%rdx, MN2, 4)
               add            $4, I
               cmp            I, M
               jne            I_loop_4

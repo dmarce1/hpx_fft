@@ -30,6 +30,33 @@ double fftw_3d(std::complex<double>* x, int N) {
 	return tm.read();
 }
 
+double fftw_2d(std::complex<double>* x, int N) {
+	static std::unordered_map<int, fftw_plan> plans;
+	static std::unordered_map<int, fftw_complex*> in;
+	static std::unordered_map<int, fftw_complex*> out;
+	if (plans.find(N) == plans.end()) {
+		in[N] = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N);
+		out[N] = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N);
+		//	fftw_plan_with_nthreads(hpx::threads::hardware_concurrency());
+		plans[N] = fftw_plan_dft_2d(N, N, in[N], out[N], FFTW_FORWARD, FFTW_MEASURE);
+	}
+	auto* i = in[N];
+	auto* o = out[N];
+	for (int n = 0; n < N * N; n++) {
+		i[n][0] = x[n].real();
+		i[n][1] = x[n].imag();
+	}
+	timer tm;
+	tm.start();
+	fftw_execute(plans[N]);
+	tm.stop();
+	for (int n = 0; n < N * N; n++) {
+		x[n].real(o[n][0]);
+		x[n].imag(o[n][1]);
+	}
+	return tm.read();
+}
+
 double fftw_1d(std::complex<double>* x, int N) {
 	static std::unordered_map<int, fftw_plan> plans;
 	static std::unordered_map<int, fftw_complex*> in;
@@ -103,7 +130,7 @@ void test_fft(int N) {
 		std::vector<double> X(N3);
 		std::vector<double> Y(N3);
 		for (int i = 0; i < N3; i++) {
-			U[i] = V[i] = std::complex<double>(i == 0, 0);
+			U[i] = V[i] = std::complex<double>(rand1(), rand1());
 			X[i] = U[i].real();
 			Y[i] = U[i].imag();
 		}
@@ -136,6 +163,7 @@ void test_fft(int N) {
 	printf("%i %e %e %e\n", N, err, a, b);
 
 }
+
 void test_fft1d(int N) {
 	double a = 0.0;
 	double err = 0.0;
@@ -190,7 +218,7 @@ void yield() {
 int hpx_main(int argc, char *argv[]) {
 	//fftw_init_threads();
 	for (int N = 16; N <= 16; N *= 2) {
-		test_fft1d(N);
+		test_fft(N);
 	}
 	return hpx::finalize();
 }

@@ -93,7 +93,8 @@ void scramble_hi(double* X, size_t NHI, size_t NLO);
 void transpose_zyx(double* X, size_t N1, size_t N2);
 void transpose_zy(double* X, size_t N);
 void transpose_hi(double* X, size_t N);
-void fft_vector_2d(double* X, double* Y, const double** Wr, const double** Wi, size_t N, size_t N0);
+void fft_2d_dit(double* X, double* Y, const double** Wr, const double** Wi, size_t N, size_t N0);
+void fft_2d_dif(double* X, double* Y, const double** Wr, const double** Wi, size_t N, size_t N0);
 }
 void get_twiddles(double*, double*, size_t N);
 

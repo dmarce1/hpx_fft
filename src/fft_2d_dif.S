@@ -18,27 +18,22 @@
 #define       EI11           %ymm7
 #define       TR00           %ymm8
 #define       TI00           %ymm9
-#define       COS01          %ymm10
-#define       COS10          %ymm11
-#define       SIN01          %ymm13
-#define       SIN10          %ymm14
-#define       two            %ymm15
+#define       CS01          %ymm10
+#define       CS10          %ymm11
+#define       CS11          %ymm12
+#define       SN01          %ymm13
+#define       SN10          %ymm14
+#define       SN11          %ymm15
 #define       STACK_SIZE     $16
 #define       Wrptr          -8(%rbp)
 #define       Wiptr          -16(%rbp)
 
 
-              .global        fft_vector_2d
+              .global        fft_2d_dif
 
               .text
 
-              .align         32
-TWO:          .double        2.0
-              .double        2.0
-              .double        2.0
-              .double        2.0
-
-fft_vector_2d:push           %rbp
+fft_2d_dif:   push           %rbp
               mov            %rsp, %rbp
               sub            STACK_SIZE, %rsp
               push           %r15
@@ -64,7 +59,7 @@ fft_vector_2d:push           %rbp
               pop            %rbp
               ret
 next_level:   cmp            $4, N
-              jg             rec
+              jg             interior
               mov            N0, %rdx
               lea            (X), %rax
               lea            (%rax, %rdx, 8), %rbx
@@ -96,7 +91,99 @@ next_level:   cmp            $4, N
               vmovapd        %ymm2, (%rcx)
               vmovapd        %ymm3, (%rcx, %rdx, 8)
               jmp            done
-rec:          mov            N, %rax
+interior:     bsr            N, %rax
+              mov            Wrptr, %rbx
+              mov            Wiptr, %rcx
+              mov            (%rbx, %rax, 8), Wr
+              mov            (%rcx, %rax, 8), Wi
+              mov            N2, %rax
+              imul           N0, %rax
+              mov            %rax, N2N0
+              xor            ky, ky
+kyloop:       vbroadcastsd   (Wr, ky, 8), CS10
+              vbroadcastsd   (Wi, ky, 8), SN10
+              xor            kz, kz
+kzloop:       vmovapd        (Wr, kz, 8), CS01
+              vmovapd        (Wi, kz, 8), SN01
+              vmulpd         SN01, SN10, CS11
+              vmulpd         CS01, SN10, SN11
+              vfmsub231pd    CS01, CS10, CS11
+              vfmadd231pd    SN01, CS10, SN11
+              mov            ky, %rax
+              imul           N0, %rax
+              add            kz, %rax
+              mov            %rax, %rbx
+              mov            %rax, %rcx
+              mov            %rax, %rdx
+              add            N2, %rbx
+              add            N2, %rdx
+              add            N2N0, %rcx
+              add            N2N0, %rdx
+              vmovapd        (X, %rax, 8), ER00
+              vmovapd        (Y, %rax, 8), EI00
+              vmovapd        (X, %rbx, 8), ER01
+              vmovapd        (Y, %rbx, 8), EI01
+              vmovapd        (X, %rcx, 8), ER10
+              vmovapd        (Y, %rcx, 8), EI10
+              vmovapd        (X, %rdx, 8), ER11
+              vmovapd        (Y, %rdx, 8), EI11
+              vmovapd        ER00, TR00
+              vmovapd        EI00, TI00
+              vaddpd         ER01, TR00, ER00
+              vaddpd         EI01, TI00, EI00
+              vsubpd         ER01, TR00, ER01
+              vsubpd         EI01, TI00, EI01
+              vmovapd        ER10, TR00
+              vmovapd        EI10, TI00
+              vaddpd         ER11, TR00, ER10
+              vaddpd         EI11, TI00, EI10
+              vsubpd         ER11, TR00, ER11
+              vsubpd         EI11, TI00, EI11
+	          vmovapd        ER00, TR00
+              vmovapd        EI00, TI00
+              vaddpd         ER10, TR00, ER00
+              vaddpd         EI10, TI00, EI00
+              vsubpd         ER10, TR00, ER10
+              vsubpd         EI10, TI00, EI10
+              vmovapd        ER01, TR00
+              vmovapd        EI01, TI00
+              vaddpd         ER11, TR00, ER01
+              vaddpd         EI11, TI00, EI01
+              vsubpd         ER11, TR00, ER11
+              vsubpd         EI11, TI00, EI11
+              vmovapd        ER01, TR00
+              vmovapd        EI01, TI00
+              vmulpd         SN01, TI00, ER01
+              vmulpd         CS01, TI00, EI01
+              vfmsub231pd    CS01, TR00, ER01
+              vfmadd231pd    SN01, TR00, EI01
+              vmovapd        ER10, TR00
+              vmovapd        EI10, TI00
+              vmulpd         SN10, TI00, ER10
+              vmulpd         CS10, TI00, EI10
+              vfmsub231pd    CS10, TR00, ER10
+              vfmadd231pd    SN10, TR00, EI10
+              vmovapd        ER11, TR00
+              vmovapd        EI11, TI00
+              vmulpd         SN11, TI00, ER11
+              vmulpd         CS11, TI00, EI11
+              vfmsub231pd    CS11, TR00, ER11
+              vfmadd231pd    SN11, TR00, EI11
+              vmovapd        ER00, (X, %rax, 8)
+              vmovapd        EI00, (Y, %rax, 8)
+              vmovapd        ER01, (X, %rbx, 8)
+              vmovapd        EI01, (Y, %rbx, 8)
+              vmovapd        ER10, (X, %rcx, 8)
+              vmovapd        EI10, (Y, %rcx, 8)
+              vmovapd        ER11, (X, %rdx, 8)
+              vmovapd        EI11, (Y, %rdx, 8)
+              add            $4, kz
+              cmp            kz, N2
+              jne            kzloop
+              inc            ky
+              cmp            ky, N2
+              jne            kyloop
+              mov            N, %rax
               imul           N0, %rax
               sub            N, %rax
               push           Y
@@ -125,85 +212,6 @@ rec:          mov            N, %rax
               call           next_level
               shl            N2
               shl            N
-              bsr            N, %rax
-              mov            Wrptr, %rbx
-              mov            Wiptr, %rcx
-              mov            (%rbx, %rax, 8), Wr
-              mov            (%rcx, %rax, 8), Wi
-              mov            N2, %rax
-              imul           N0, %rax
-              mov            %rax, N2N0
-              xor            ky, ky
-kyloop:       vbroadcastsd   (Wr, ky, 8), COS10
-              vbroadcastsd   (Wi, ky, 8), SIN10
-              xor            kz, kz
-kzloop:       vmovapd        (Wr, kz, 8), COS01
-              vmovapd        (Wi, kz, 8), SIN01
-              mov            ky, %rax
-              imul           N0, %rax
-              add            kz, %rax
-              mov            %rax, %rbx
-              mov            %rax, %rcx
-              mov            %rax, %rdx
-              add            N2, %rbx
-              add            N2, %rdx
-              add            N2N0, %rcx
-              add            N2N0, %rdx
-              vmovapd        (X, %rax, 8), ER00
-              vmovapd        (Y, %rax, 8), EI00
-              vmovapd        (X, %rbx, 8), ER01
-              vmovapd        (Y, %rbx, 8), EI01
-              vmovapd        (X, %rcx, 8), ER10
-              vmovapd        (Y, %rcx, 8), EI10
-              vmovapd        (X, %rdx, 8), ER11
-              vmovapd        (Y, %rdx, 8), EI11
-	          vmovapd        TWO, two
-              vmovapd        ER00, TR00
-              vmovapd        EI00, TI00
-              vfmadd231pd    SIN01, EI01, TR00
-              vfnmadd231pd   SIN01, ER01, TI00
-              vfnmadd132pd   COS01, TR00, ER01
-              vfnmadd132pd   COS01, TI00, EI01
-              vfmsub132pd    two, ER01, ER00
-              vfmsub132pd    two, EI01, EI00
-	          vmovapd        ER10, TR00
-              vmovapd        EI10, TI00
-              vfmadd231pd    SIN01, EI11, TR00
-              vfnmadd231pd   SIN01, ER11, TI00
-              vfnmadd132pd   COS01, TR00, ER11
-              vfnmadd132pd   COS01, TI00, EI11
-              vfmsub132pd    two, ER11, ER10
-              vfmsub132pd    two, EI11, EI10
-	          vmovapd        ER00, TR00
-              vmovapd        EI00, TI00
-              vfmadd231pd    SIN10, EI10, TR00
-              vfnmadd231pd   SIN10, ER10, TI00
-              vfnmadd132pd   COS10, TR00, ER10
-              vfnmadd132pd   COS10, TI00, EI10
-              vfmsub132pd    two, ER10, ER00
-              vfmsub132pd    two, EI10, EI00
-	          vmovapd        ER01, TR00
-              vmovapd        EI01, TI00
-              vfmadd231pd    SIN10, EI11, TR00
-              vfnmadd231pd   SIN10, ER11, TI00
-              vfnmadd132pd   COS10, TR00, ER11
-              vfnmadd132pd   COS10, TI00, EI11
-              vfmsub132pd    two, ER11, ER01
-              vfmsub132pd    two, EI11, EI01
-              vmovapd        ER00, (X, %rax, 8)
-              vmovapd        EI00, (Y, %rax, 8)
-              vmovapd        ER01, (X, %rbx, 8)
-              vmovapd        EI01, (Y, %rbx, 8)
-              vmovapd        ER10, (X, %rcx, 8)
-              vmovapd        EI10, (Y, %rcx, 8)
-              vmovapd        ER11, (X, %rdx, 8)
-              vmovapd        EI11, (Y, %rdx, 8)
-              add            $4, kz
-              cmp            kz, N2
-              jne            kzloop
-              inc            ky
-              cmp            ky, N2
-              jne            kyloop
 done:         ret
 transpose:    vunpcklpd      %ymm1, %ymm0, %ymm12
               vunpckhpd      %ymm1, %ymm0, %ymm13
@@ -222,20 +230,20 @@ transpose:    vunpcklpd      %ymm1, %ymm0, %ymm12
               vperm2f128     $0x31, %ymm14, %ymm12, %ymm6
               vperm2f128     $0x31, %ymm15, %ymm13, %ymm7
               ret
-butterfly4:   vaddpd         %ymm1, %ymm0, %ymm8
-              vaddpd         %ymm3, %ymm2, %ymm10
-              vaddpd         %ymm5, %ymm4, %ymm12
-              vaddpd         %ymm7, %ymm6, %ymm14
-              vsubpd         %ymm1, %ymm0, %ymm9
-              vsubpd         %ymm3, %ymm2, %ymm11
-              vsubpd         %ymm5, %ymm4, %ymm13
-              vsubpd         %ymm7, %ymm6, %ymm15
-              vaddpd         %ymm10, %ymm8, %ymm0
-              vaddpd         %ymm15, %ymm9, %ymm1
-              vaddpd         %ymm14, %ymm12, %ymm4
-              vsubpd         %ymm11, %ymm13, %ymm5
-              vsubpd         %ymm10, %ymm8, %ymm2
-              vsubpd         %ymm15, %ymm9, %ymm3
-              vsubpd         %ymm14, %ymm12, %ymm6
-              vaddpd         %ymm11, %ymm13, %ymm7
+butterfly4:   vaddpd         %ymm2, %ymm0, %ymm8
+              vaddpd         %ymm3, %ymm1, %ymm9
+              vaddpd         %ymm6, %ymm4, %ymm12
+              vaddpd         %ymm7, %ymm5, %ymm13
+              vsubpd         %ymm2, %ymm0, %ymm10
+              vsubpd         %ymm3, %ymm1, %ymm11
+              vsubpd         %ymm6, %ymm4, %ymm14
+              vsubpd         %ymm7, %ymm5, %ymm15
+              vaddpd         %ymm9, %ymm8, %ymm0
+              vaddpd         %ymm15, %ymm10, %ymm2
+              vaddpd         %ymm13, %ymm12, %ymm4
+              vsubpd         %ymm11, %ymm14, %ymm6
+              vsubpd         %ymm9, %ymm8, %ymm1
+              vsubpd         %ymm15, %ymm10, %ymm3
+              vsubpd         %ymm13, %ymm12, %ymm5
+              vaddpd         %ymm11, %ymm14, %ymm7
               ret

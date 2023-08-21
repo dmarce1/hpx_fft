@@ -87,33 +87,10 @@ void fft_3d_local(double* X, double* Y, int N) {
 	const int N2 = N / N1;
 	const int log2N1 = std::ilogb(N1);
 	const int log2N2 = std::ilogb(N2);
-	scramble3d();
+	fft_1d_dif(X, Y, Wr[log2N].data(), Wi[log2N].data(), N, N * N);
 	for (int xi = 0; xi < N; xi++) {
-		for (int yi = 0; yi < N; yi += N2) {
-			for (int zi = 0; zi < N; zi += N2) {
-				const int n = zi + (yi + xi * N) * N;
-				fft_vector_2d(X + n, Y + n, Wrptr.data(), Wiptr.data(), N2, N);
-			}
-		}
-	}
-	for (int xi = 0; xi < N; xi += N2) {
 		const int n = xi * N * N;
-		fft_1d_dit(X + n, Y + n, Wr[log2N2].data(), Wi[log2N2].data(), N2, N * N);
+		fft_2d_dif(X + n, Y + n, Wrptr.data(), Wiptr.data(), N, N);
 	}
-	_3d_twiddles(X, Y, N1, N2);
-	for (int xi = 0; xi < N; xi++) {
-		for (int yi = 0; yi < N; yi += N1) {
-			for (int zi = 0; zi < N; zi += N2) {
-				const int n = zi + (yi + xi * N) * N;
-				fft_vector_2d(X + n, Y + n, Wrptr.data(), Wiptr.data(), N1, N);
-			}
-		}
-	}
-	for (int xi = 0; xi < N; xi += N1) {
-		for (int yi = 0; yi < N; yi += N2) {
-			const int n = (yi + xi * N) * N;
-			fft_1d_dit(X + n, Y + n, Wr[log2N1].data(), Wi[log2N1].data(), N1, N * N);
-		}
-	}
-
+	scramble3d();
 }
