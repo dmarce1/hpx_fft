@@ -14,12 +14,12 @@
 
 
 
-              .global        transpose_re
+              .global        transpose_zyx
 
 
               .text
 
-transpose_re: enter          STACK_SIZE, $0
+transpose_zyx:enter          STACK_SIZE, $0
               push           %r12
               push           %r13
               push           %r14

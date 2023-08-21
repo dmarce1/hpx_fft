@@ -27,7 +27,7 @@
 #define       NTW            -24(%rbp)
 
 
-              .global        fft_batch_1d
+              .global        fft_1d_dit
 
               .text
 
@@ -37,7 +37,7 @@ TWO:          .double        2.0
               .double        2.0
               .double        2.0
 
-fft_batch_1d: push           %rbp
+fft_1d_dit:   push           %rbp
               mov            %rsp, %rbp
               sub            STACK_SIZE, %rsp
               push           %r15

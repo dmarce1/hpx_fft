@@ -8,11 +8,11 @@ find_package(HPX REQUIRED NO_CMAKE_PACKAGE_REGISTRY)
 
 set(fft_source_files
     src/bit_reverse.S
-    src/fft_batch_1d.S
+    src/fft_1d_dit.S
+    src/fft_1d_dif.S
     src/fft.cpp
     src/fft_3d_local.cpp
     src/fft_server.cpp
-    src/fft_vector.cpp
     src/fft_vector_2d.S
     src/main.cpp
     src/scramble.S
@@ -20,11 +20,13 @@ set(fft_source_files
     src/transpose_zy.S
     src/transpose_zyx.S
     src/transpose_hi.S
+    src/twiddles.cpp
  )      
 
 set(fft_include_files
     fft/fft.hpp
-)
+    fft/timer.hpp
+ )
 
 add_hpx_executable(
     fft

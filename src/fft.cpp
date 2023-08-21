@@ -2,54 +2,31 @@
 
 fft3d::fft3d(int N_, std::vector<hpx::id_type>&& localities) :
 		Nglobal(N_) {
-	std::vector < std::vector<std::vector<hpx::future<hpx::id_type>>> >cfuts;
-	std::vector<hpx::future<void>> ifuts;
+	std::vector<hpx::future<void>> futs;
 	Nrank = 1 << (std::ilogb(localities.size()) / NDIM);
 	Nlocal = Nglobal / Nrank;
-	cfuts.resize(Nrank);
+	const int Nrank3 = Nrank * Nrank * Nrank;
+	futs.resize(Nrank3);
 	int lll = 0;
 	std::array<int, NDIM> pos;
+	servers.resize(Nrank3);
 	for (pos[XDIM] = 0; pos[XDIM] < Nrank; pos[XDIM]++) {
-		cfuts[pos[XDIM]].resize(Nrank);
 		for (pos[YDIM] = 0; pos[YDIM] < Nrank; pos[YDIM]++) {
-			cfuts[pos[XDIM]][pos[YDIM]].resize(Nrank);
 			for (pos[ZDIM] = 0; pos[ZDIM] < Nrank; pos[ZDIM]++) {
-				cfuts[pos[XDIM]][pos[YDIM]][pos[ZDIM]] = hpx::new_ < fft_server > (localities[lll], Nglobal, pos);
+				futs[lll] = hpx::new_ < fft_server > (localities[lll], Nglobal, pos).then([this, lll](hpx::future<hpx::id_type>&& fut) {
+					auto id = fut.get();
+					servers[lll] = id;
+				});
 				lll++;
 			}
 		}
 	}
-	servers.resize(Nrank);
-	for (int i = 0; i < Nrank; i++) {
-		servers[i].resize(Nrank);
-		for (int j = 0; j < Nrank; j++) {
-			servers[i][j].resize(Nrank);
-			for (int k = 0; k < Nrank; k++) {
-				servers[i][j][k] = cfuts[i][j][k].get();
-			}
-		}
+	hpx::wait_all(futs.begin(), futs.end());
+	for (int i = 0; i < Nrank3; i++) {
+		auto s = servers;
+		futs[i] = hpx::async<typename fft_server::set_servers_action>(servers[i], std::move(s));
 	}
-	for (int i = 0; i < Nrank; i++) {
-		for (int j = 0; j < Nrank; j++) {
-			for (int k = 0; k < Nrank; k++) {
-				std::array<std::vector<hpx::id_type>, NDIM> svrs;
-				for (int dim = 0; dim < NDIM; dim++) {
-					svrs[dim].resize(Nrank);
-				}
-				for (int m = 0; m < Nrank; m++) {
-					svrs[XDIM][m] = servers[m][j][k];
-				}
-				for (int m = 0; m < Nrank; m++) {
-					svrs[YDIM][m] = servers[i][m][k];
-				}
-				for (int m = 0; m < Nrank; m++) {
-					svrs[ZDIM][m] = servers[i][j][m];
-				}
-				ifuts.push_back(hpx::async<typename fft_server::set_servers_action>(servers[i][j][k], std::move(svrs)));
-			}
-		}
-	}
-	hpx::wait_all(ifuts.begin(), ifuts.end());
+	hpx::wait_all(futs.begin(), futs.end());
 }
 
 std::vector<std::complex<double>> fft3d::read(std::array<int, NDIM> xlb, std::array<int, NDIM> xub) {
@@ -81,7 +58,8 @@ std::vector<std::complex<double>> fft3d::read(std::array<int, NDIM> xlb, std::ar
 					vol *= yub[dim] - ylb[dim];
 				}
 				if (vol) {
-					futs1.push_back(hpx::async<typename fft_server::read_action>(servers[i][j][k], ylb, yub));
+					const int iii = k + Nrank * (j + Nrank * i);
+					futs1.push_back(hpx::async<typename fft_server::read_action>(servers[iii], ylb, yub));
 				}
 			}
 		}
@@ -101,7 +79,7 @@ std::vector<std::complex<double>> fft3d::read(std::array<int, NDIM> xlb, std::ar
 					ylb[dim] = std::max(xlb[dim], zlb[dim]);
 					yub[dim] = std::min(xub[dim], zub[dim]);
 					dx2[dim] = yub[dim] - ylb[dim];
-					assert(dx2[dim]>=0);
+					assert(dx2[dim] >= 0);
 					vol *= dx2[dim];
 				}
 				if (vol) {
@@ -163,7 +141,8 @@ void fft3d::write(std::vector<std::complex<double>>&& Z, std::array<int, NDIM> x
 							}
 						}
 					}
-					futs.push_back(hpx::async<typename fft_server::write_action>(servers[i][j][k], std::move(z), ylb, yub));
+					const int iii = k + Nrank * (j + Nrank * i);
+					futs.push_back(hpx::async<typename fft_server::write_action>(servers[iii], std::move(z), ylb, yub));
 				}
 			}
 		}
@@ -173,48 +152,18 @@ void fft3d::write(std::vector<std::complex<double>>&& Z, std::array<int, NDIM> x
 
 void fft3d::scramble(int dim) {
 	std::vector<hpx::future<void>> futs;
-	for (int i = 0; i < Nrank; i++) {
-		for (int j = 0; j < Nrank; j++) {
-			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::scramble_action>(servers[i][j][k], dim));
-			}
-		}
+	const int Nrank3 = Nrank * Nrank * Nrank;
+	for (int i = 0; i < Nrank3; i++) {
+		futs.push_back(hpx::async<typename fft_server::scramble_action>(servers[i], dim));
 	}
 	hpx::wait_all(futs.begin(), futs.end());
 }
 
 void fft3d::transpose(int dim) {
 	std::vector<hpx::future<void>> futs;
-	for (int i = 0; i < Nrank; i++) {
-		for (int j = 0; j < Nrank; j++) {
-			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::transpose_action>(servers[i][j][k], dim));
-			}
-		}
-	}
-	hpx::wait_all(futs.begin(), futs.end());
-}
-
-void fft3d::apply_fft_1d(int dim, bool tw) {
-	std::vector<hpx::future<void>> futs;
-	for (int i = 0; i < Nrank; i++) {
-		for (int j = 0; j < Nrank; j++) {
-			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::apply_fft_1d_action>(servers[i][j][k], dim, tw));
-			}
-		}
-	}
-	hpx::wait_all(futs.begin(), futs.end());
-}
-
-void fft3d::transpose_yz() {
-	std::vector<hpx::future<void>> futs;
-	for (int i = 0; i < Nrank; i++) {
-		for (int j = 0; j < Nrank; j++) {
-			for (int k = 0; k < Nrank; k++) {
-				futs.push_back(hpx::async<typename fft_server::transpose_yz_action>(servers[i][j][k]));
-			}
-		}
+	const int Nrank3 = Nrank * Nrank * Nrank;
+	for (int i = 0; i < Nrank3; i++) {
+		futs.push_back(hpx::async<typename fft_server::transpose_action>(servers[i], dim));
 	}
 	hpx::wait_all(futs.begin(), futs.end());
 }
